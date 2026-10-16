@@ -1,0 +1,338 @@
+# City source manifest, research-phase candidates (schema: spec/input-layers.md §5)
+# Status: candidates only. Nothing downloaded or computed; coverage/sanity checks are pending (Step 3.4).
+city: amsterdam
+country: NL
+languages: [nl, en]
+boundary: {source: "Gemeente Amsterdam (gemeentegrens) or OSM admin boundary", id: null, note: "not resolved in this research pass"}
+researched_at: 2026-10-09
+researcher: "skill research phase v0 (agent)"
+skill_version: 0.1.0
+verification_legend:
+  "true": "endpoint probed this session and responded with the expected content"
+  "partial": "catalogue/metadata verified, but the data endpoint itself was not probed or did not respond"
+  "false": "not verified; taken from search results or prior knowledge"
+
+layers:
+
+  I02_building_heights:
+    best_candidate:
+      tier: A
+      source_name: "3DBAG (TU Delft 3D geoinformation group + 3DGI), LoD1.2/1.3/2.2 from BAG footprints + AHN"
+      url: https://3dbag.nl
+      access:
+        method: api
+        endpoint: https://api.3dbag.nl/collections/pand/items
+        alt_endpoints:
+          - https://data.3dbag.nl/latest/tile_index.fgb   # tiled CityJSON/GPKG/OBJ downloads; HEAD 200
+        registration: false
+      licence:
+        id: CC-BY-4.0
+        class: shareable
+        attribution: "© 3DBAG by tudelft3d and 3DGI (CC BY 4.0)"
+        evidence: "license link rel=license → creativecommons.org/licenses/by/4.0 in api.3dbag.nl/collections/pand"
+      vintage: "rolling releases; BAG footprints updated per release, heights from latest AHN (AHN4, partly AHN5). Exact release tag not read this session"
+      resolution: "per building (BAG pand), roof-height percentiles + ground height"
+      coverage: null
+      coverage_note: "expected ≈1.0 of BAG buildings in Amsterdam; not measured"
+      derivation: "height = b3_h_dak_70p (or 50p) − b3_h_maaiveld per BAG pand; join to I01 on BAG identificatie"
+      verified: true
+      verification: "api.3dbag.nl/collections → 200 JSON, collection 'pand', CC BY 4.0 link; tile_index.fgb HEAD 200"
+    considered:
+      - source_name: "Kadaster 3D Basisvoorziening (3D Tiles gebouwen, LoD2.2; LoD1.3 where no AHN)"
+        tier: A
+        decision: alternate
+        reason: "CC BY 4.0 national product (per data.overheid.nl dataset 75647); same BAG+AHN lineage as 3DBAG, but 3DBAG exposes per-building height attributes via a simpler API"
+        url: https://api.pdok.nl/kadaster/3d-basisvoorziening/ogc/v1/collections
+        verified: true   # OGC API collections endpoint returned 200
+      - source_name: "AHN DSM/DTM 0.5 m (Rijkswaterstaat/Het Waterschapshuis) via PDOK WCS"
+        tier: A
+        decision: alternate
+        reason: "ladder step 2 if self-deriving median(DSM−DTM) per footprint is preferred; CC0 per data.overheid.nl"
+        url: https://service.pdok.nl/rws/ahn/wcs/v1_0?request=GetCapabilities&service=WCS
+        verified: true   # GetCapabilities lists coverages dsm_05m, dtm_05m
+      - {source_name: "EUBUCCO", tier: B, decision: rejected, reason: "superseded by tier A 3DBAG", verified: false}
+      - {source_name: "GlobalBuildingAtlas heights", tier: B, decision: local-only, reason: "CC BY-NC", verified: false}
+      - {source_name: "OSM building:levels × 3 m", tier: C, decision: rejected, reason: "superseded by tier A", verified: false}
+
+  I10_noise:
+    best_candidate:
+      tier: A
+      source_name: "RIVM, Geluidbelastingkaart agglomeraties Lden en Lnight 2021 (INSPIRE), END round 4, includes agglomeration Amsterdam"
+      url: https://data.overheid.nl/dataset/34900-geluidbelasting-agglomeratiegemeenten--lden-en-lnight--2021--inspire-
+      access:
+        method: download
+        endpoint: https://haleconnect.com/services/bsp/org.1251.905c8b43-5525-409c-b693-0d5a378aeda8/service/atom/id_predefined_dataset
+        alt_endpoints:
+          - https://haleconnect.com/ows/services/org.1251.905c8b43-5525-409c-b693-0d5a378aeda8_wms?SERVICE=WMS&Request=GetCapabilities
+        registration: false
+      licence:
+        id: CC0-1.0
+        class: shareable
+        attribution: "RIVM / gemeente Amsterdam (attribution courtesy, not required)"
+        evidence: "data.overheid.nl CKAN license_id = creativecommons.org/publicdomain/zero/1.0"
+      vintage: "2021 (reference year 2021; next END round due 2027 with ref. year 2026)"
+      resolution: "noise contour polygons per source (road, rail, industry, aircraft) in 5 dB bands, Lden and Lnight; INSPIRE GML"
+      coverage: null
+      coverage_note: "agglomeration-wide; Amsterdam municipality expected fully covered; not measured"
+      derivation: "facade level = band of contour polygon intersecting facade sample; per-source layers combined by energetic sum"
+      verified: true
+      verification: "ATOM feed 200, title 'Geluidbelastingkaart agglomeraties Lden en Lnight, 2021 (INSPIRE)'; CKAN metadata read. Dataset contents per municipality not inspected"
+    considered:
+      - source_name: "Gemeente Amsterdam open geodata 'Geluid' (KAARTLAAG=GELUID_2021), municipal END 2021 contour polygons"
+        tier: A
+        decision: alternate
+        reason: "Same END round, much easier access (one GeoJSON with fields jaar, periode lden/lnight, bron, legenda). Licence: Amsterdam's maps.amsterdam.nl/geluid layer 'Geluidscontouren' is listed on data.overheid.nl under Public Domain Mark 1.0; per-layer statement for GELUID_2021 not found → confirm before treating as shareable"
+        url: https://maps.amsterdam.nl/open_geodata/geojson_lnglat.php?KAARTLAAG=GELUID_2021&THEMA=geluid
+        verified: true   # returned GeoJSON FeatureCollection 'GELUID_2021'
+      - source_name: "RIVM Geluid in Nederland van wegverkeer (Lden) 2022, 10 m raster"
+        tier: A
+        decision: complement
+        reason: "Public Domain Mark; national, CNOSSOS, newer (2022) but road-only and Lden-only; useful to cross-check / fill road noise"
+        url: https://data.rivm.nl/data/alo/rivm_20250101_Geluid_lden_wegverkeer_2022.zip
+        verified: true   # HEAD 200, Last-Modified 2026-10-06
+      - {source_name: "EEA END noise contours (Reportnet copy)", tier: A, decision: local-only, reason: "EEA terms restrict to research/non-profit; national CC0 original preferred", verified: false}
+
+  I06_tree_points:
+    best_candidate:
+      tier: A
+      source_name: "Gemeente Amsterdam, Bomen (stamgegevens) via DSO API"
+      url: https://api.data.amsterdam.nl/v1/bomen/stamgegevens/
+      access: {method: api, endpoint: "https://api.data.amsterdam.nl/v1/bomen/stamgegevens/?_format=json", registration: false}
+      licence:
+        id: CC0-1.0
+        class: shareable
+        attribution: "Gemeente Amsterdam"
+        evidence: "data.overheid.nl dataset 'Objecten Openbare Ruimte' (resource https://api.data.amsterdam.nl/v1/bomen/) license CC0 1.0"
+      vintage: "live register (continuously maintained)"
+      resolution: "point per tree; species, height class (boomhoogteklasseActueel), planting year, stem-diameter class, owner/manager"
+      coverage: null
+      coverage_note: "326,190 records (x-total-count). Municipally managed trees only (public space); private-garden trees absent. Coverage share vs canopy maxima not computed"
+      verified: true
+      verification: "API returned JSON records; _count=true header x-total-count 326190"
+    considered:
+      - {source_name: "OSM natural=tree", tier: C, decision: rejected, reason: "superseded by municipal register", verified: false}
+
+  I05_canopy_height:
+    best_candidate:
+      tier: A
+      source_name: "AHN DSM/DTM 0.5 m via PDOK WCS → canopy height model"
+      url: https://www.ahn.nl
+      access: {method: wcs, endpoint: "https://service.pdok.nl/rws/ahn/wcs/v1_0?request=GetCapabilities&service=WCS", registration: false}
+      licence:
+        id: CC0-1.0
+        class: shareable
+        attribution: "AHN (Actueel Hoogtebestand Nederland)"
+        evidence: "data.overheid.nl datasets 36461 (AHN DSM) and 47567 (AHN DTM): CC0 1.0"
+      vintage: "AHN4 (flown 2020–2022) in the current mosaic; AHN5 (2023–2025) rollout status for Amsterdam not checked"
+      resolution: "0.5 m"
+      coverage: 1.0
+      coverage_note: "national coverage; value assumed, not measured"
+      derivation: "CHM = DSM − DTM, masked to vegetation (exclude 3DBAG/BGT pand footprints and water; optional NDVI > 0.3 from summer imagery). AHN4 point classes have no explicit vegetation class (vegetation sits in 'unclassified'), so masking is required"
+      verified: true
+      verification: "WCS GetCapabilities returned coverages dsm_05m, dtm_05m"
+    considered:
+      - {source_name: "Meta/WRI CHMv2 1 m", tier: B, decision: rejected, reason: "superseded by AHN tier A", verified: false}
+      - {source_name: "Copernicus HRL Tree Cover Density", tier: B, decision: rejected, reason: "10 m; superseded", verified: false}
+
+  I08_sealed_surface:
+    best_candidate:
+      tier: A
+      source_name: "Basisregistratie Grootschalige Topografie (BGT) via PDOK OGC API Features"
+      url: https://api.pdok.nl/lv/bgt/ogc/v1
+      access:
+        method: api
+        endpoint: https://api.pdok.nl/lv/bgt/ogc/v1/collections?f=json
+        alt_endpoints:
+          - https://api.pdok.nl/lv/bgt/download/v1_0/dataset   # bulk download API, 200
+        registration: false
+      licence:
+        id: CC0-1.0
+        class: shareable
+        attribution: "Basisregistratie Grootschalige Topografie (BGT), via PDOK"
+        evidence: "data.overheid.nl has three BGT catalogue entries listing CC0 1.0, Public Domain Mark and CC BY 4.0; all are shareable. Confirm the canonical PDOK statement (expected CC0)"
+      vintage: "live register"
+      resolution: "1:500–1:2000 polygons; full planar partition of the city"
+      coverage: 1.0
+      coverage_note: "BGT is a complete planar partition; assumed, not measured"
+      derivation: "sealed = wegdeel/ondersteunendwegdeel with fysiekVoorkomen in {gesloten verharding, open verharding, half verhard} + onbegroeidterreindeel (verhard types) + pand + overigbouwwerk. 'erf' (private yard) is ambiguous; split it with NDVI"
+      verified: true
+      verification: "collections list includes wegdeel, onbegroeidterreindeel, begroeidterreindeel, pand, waterdeel"
+    considered:
+      - source_name: "Copernicus HRL Imperviousness Density 10 m (2021 / 2024)"
+        tier: B
+        decision: rejected
+        reason: "superseded by BGT. Access: CLMS download needs EU Login (2018 metadata says 'requires authentication'); an anonymous EEA ImageServer exists for 2018 but returned 404 for 2021"
+        url: https://land.copernicus.eu/en/products/high-resolution-layer-imperviousness
+        verified: partial
+
+  I07_green_areas:
+    best_candidate:
+      tier: A
+      source_name: "BGT begroeidterreindeel (vegetated land cover) + Gemeente Amsterdam 'Parken, plantsoenen en recreatief groen' for public access"
+      url: https://api.pdok.nl/lv/bgt/ogc/v1/collections/begroeidterreindeel
+      access:
+        method: api
+        endpoint: https://api.pdok.nl/lv/bgt/ogc/v1/collections/begroeidterreindeel/items
+        alt_endpoints:
+          - https://maps.amsterdam.nl/open_geodata/geojson_lnglat.php?KAARTLAAG=PARKPLANTSOENGROEN&THEMA=stadsparken
+        registration: false
+      licence:
+        id: "CC0-1.0 (BGT); PDM-1.0 (Amsterdam parks)"
+        class: shareable
+        attribution: "BGT via PDOK; Gemeente Amsterdam"
+        evidence: "data.overheid.nl: 'Parken, plantsoenen en recreatief groen' (Gemeente Amsterdam) → Public Domain Mark 1.0"
+      vintage: "live"
+      resolution: "polygons"
+      coverage: null
+      derivation: "type from BGT fysiekVoorkomen (grasland, bos, struiken, ...); access = public if it intersects the Amsterdam parks layer, otherwise unknown/private"
+      verified: partial
+      verification: "BGT collection listed (200); Amsterdam parks layer URL taken from the catalogue mirror (ckan.bertha.geodan.nl), not fetched; Amsterdam licence read from data.overheid.nl"
+    considered:
+      - {source_name: "Gemeente Amsterdam Hoofdgroenstructuur", tier: A, decision: complement, reason: "planning designation, not land cover", url: "https://maps.amsterdam.nl/open_geodata/", verified: false}
+      - {source_name: "Copernicus Urban Atlas 2021", tier: B, decision: rejected, reason: "superseded; EU Login for download", verified: false}
+
+  I12_population:
+    best_candidate:
+      tier: A
+      source_name: "CBS Vierkantstatistieken 100 m (Statistische gegevens per vierkant)"
+      url: https://www.cbs.nl/nl-nl/dossier/nederland-regionaal/geografische-data/kaart-van-100-meter-bij-100-meter-met-statistieken
+      access: {method: download, endpoint: "https://download.cbs.nl/vierkant/100/2026-cbs_vk100_2025_v1.zip", registration: false}
+      licence:
+        id: CC-BY-4.0
+        class: shareable
+        attribution: "© CBS (Centraal Bureau voor de Statistiek)"
+        evidence: "data.overheid.nl dataset 83957-cbs-vierkantstatistieken-100m license CC BY 4.0. CBS's own terms page also asks for '© CBS' credit"
+      vintage: "2025 (v1, preliminary); full ('vol') releases for 2021, 2022 and 2023 also available"
+      resolution: "100 m grid; small counts suppressed for privacy"
+      coverage: 1.0
+      verified: true
+      verification: "CBS page lists the zip links; HEAD 200 on 2026-cbs_vk100_2025_v1.zip (37.7 MB)"
+    considered:
+      - {source_name: "GHS-POP / WorldPop 100 m", tier: B, decision: rejected, reason: "superseded by census grid", verified: false}
+
+  I13_short_term_rentals:
+    best_candidate:
+      tier: B
+      source_name: "Inside Airbnb, Amsterdam listings snapshot"
+      url: https://insideairbnb.com/get-the-data/
+      access: {method: download, endpoint: "https://data.insideairbnb.com/the-netherlands/north-holland/amsterdam/2026-09-16/data/listings.csv.gz", registration: false}
+      licence:
+        id: "Inside Airbnb terms (see spec §1: aggregates only; raw data must not be republished)"
+        class: shareable
+        class_note: "aggregates are shareable; raw listings are local-only"
+        attribution: "Inside Airbnb (insideairbnb.com)"
+      vintage: "2026-09-16"
+      resolution: "listing points offset ≤150 m"
+      verified: true
+      verification: "listed on the get-the-data page (snapshot 2026-09-16); file not fetched"
+    considered:
+      - source_name: "Gemeente Amsterdam vakantieverhuur registration numbers (mandatory since 2021)"
+        tier: A
+        decision: rejected
+        reason: "Register exists but no open dataset found (DSO API schema index and data.overheid.nl searched). Ask the municipality / Onderzoek & Statistiek for aggregated counts"
+        verified: false
+
+  I19_transit:
+    baseline: {source_name: "OSM via Overpass: public_transport stops/platforms + route relations; frequency = default headway per mode", tier: C, licence: {id: ODbL-1.0, class: shareable}}
+    best_candidate:
+      tier: A
+      source_name: "OpenOV / OVapi 'openov-nl' national GTFS (Stichting OpenGeo, built by Bliksem Labs from NDOV Loket concession data)"
+      url: https://gtfs.openov.nl/
+      access:
+        method: download
+        endpoint: https://gtfs.openov.nl/gtfs-rt/gtfs-openov-nl.zip
+        alt_endpoints:
+          - "https://gtfs.openov.nl/gtfs-rt/NL-OPENOV-<yyyymmdd>-gtfs.zip"
+        registration: false
+        format: "GTFS static (GTFS-RT tripUpdates/vehiclePositions/alerts alongside)"
+        usage_policy: "set an identifying User-Agent; use If-Modified-Since; Accept-Encoding gzip; schedules rebuilt daily (new operational day 03:00 UTC)"
+      mobility_database_id: "mdb-1077 (lists the sibling gtfs-nl.zip; mis-geocoded in the catalogue as AT / Lower Austria)"
+      operators: [GVB, "NS (IFF:NS)", "Connexxion (CXX)", EBS, Arriva, Qbuzz, "Electrische Museumtramlijn Amsterdam", "...all NL concessions"]
+      modes: [metro, tram, bus, ferry, rail]
+      licence:
+        id: CC0-1.0
+        class: shareable
+        attribution: "Not required (CC0). Courtesy: 'Stichting OpenGeo / OVapi, data from NDOV Loket'"
+        evidence: "https://gtfs.openov.nl/LICENSE.TXT: 'These works are available under CC0 1.0 Universal'. DOVA concession appendix 'Datasets OV' v2.2.4 (2024) requires operators to publish via the NDOV Loketten as open data under CC-0"
+      vintage: "Last-Modified 2026-10-10 03:52 GMT; feed_info validity 2026-10-10 to 2026-12-12 (feed_version gtransit_chb:1.0.3:9631); rebuilt daily"
+      file_size_bytes: 257614787
+      resolution: "stop-level; shapes included; calendar_dates.txt only (no calendar.txt)"
+      coverage_note: "All Amsterdam urban modes in one feed: GVB tram 16 routes, metro 5, bus 44, ferry 10 (route_type 0/1/3/4); NS rail 110 + rail-replacement bus 106; Connexxion/EBS regional buses. No transfers.txt in this variant. No complements needed"
+      derivation: "stop-level departures per hour (weekday 07–19) from stop_times; headway per route; ferry stops (route_type 4) kept as transit access"
+      verified: true
+      verification: "HEAD 200 application/zip, Content-Length 257,614,787, Last-Modified Sat 10 Oct 2026 03:52:17 GMT. Range read of the zip central directory: agency, calendar_dates, feed_info, routes, shapes, stop_times (1.24 GB uncompressed), stops, trips. agency.txt includes GVB and IFF:NS; routes.txt route_type counts for GVB: 0=16, 1=5, 3=44, 4=10"
+    complements: []
+    considered:
+      - source_name: "OVapi gtfs-nl.zip (same build, plus AVV, Thalys/international rail and transfers.txt)"
+        tier: A
+        decision: local-only
+        reason: "README licence is custom ('You are free to use this data ... no SLA'), with no licence id; it contains the AVV and Thalys schedules that were removed from the CC0 openov-nl variant at Open-OV's request, so not all content is CC0. Use openov-nl instead"
+        url: https://gtfs.ovapi.nl/nl/gtfs-nl.zip
+        file_size_bytes: 258798293
+        verified: true
+      - source_name: "NDOV Loket raw KV1 / NeTEx timetable exports (data.ndovloket.nl)"
+        tier: A
+        decision: rejected
+        reason: "same source data in Transmodel formats; would need our own GTFS conversion. openov-nl already does this"
+        url: https://data.ndovloket.nl/
+        verified: true
+      - {source_name: "GVB own GTFS", tier: A, decision: rejected, reason: "GVB publishes no separate open GTFS; it delivers to NDOV Loket, already in openov-nl", verified: false}
+      - {source_name: "NS API (Reisinformatie)", tier: A, decision: rejected, reason: "API key required; NS rail already in openov-nl", verified: false}
+
+  I20_amenities:
+    baseline:
+      source_name: "Overture places (categories) + OSM amenity/shop/leisure/healthcare tags"
+      tier: B
+      licence: {id: "CDLA-Permissive-2.0 (Overture places; Foursquare part Apache-2.0, AllThePlaces part CC0-1.0) / ODbL-1.0 (OSM)", class: shareable}
+      licence_evidence: "docs.overturemaps.org/attribution, Places section (read 2026-10-10)"
+    best_candidate:
+      tier: A
+      categories: [cafes_restaurants, retail, healthcare_practices, schools, sports, culture, community]
+      source_name: "Gemeente Amsterdam Functiekaart (niet-woonfuncties): every non-residential unit from field survey, keyed to BAG verblijfsobjecten"
+      url: https://maps.amsterdam.nl/functiekaart/
+      access:
+        method: download
+        endpoint: "https://maps.amsterdam.nl/open_geodata/geojson_lnglat.php?KAARTLAAG=FUNCTIEKAART&THEMA=functiekaart"
+        registration: false
+      licence:
+        id: "PDM-1.0 (Public Domain Mark)"
+        class: shareable
+        attribution: "Gemeente Amsterdam, Ruimte en Duurzaamheid (Functiekaart)"
+        evidence: "data.overheid.nl package cwujx-uxu9r8sg 'Functiekaart' licence_id = creativecommons.org/publicdomain/mark/1.0 (record from 2022). The open_geodata page itself states no licence"
+      vintage: "based on BAG verblijfsobjecten of 19 January 2026; no history kept"
+      resolution: "point per unit; fields Adres, Gebruiksdoel, Objectsoort (Restaurant, Cafe/bar, Cafetaria, Winkel/verkoopruimte, Praktijkruimte, Schoolgebouw, ...), FUNCTIE (Horeca, Detailhandel, Zorg, Onderwijs, Sport, ...), Oppervlakte m², BAG id"
+      coverage: null
+      coverage_note: >
+        38,651 records citywide. Retail is not split into groceries vs other shops (FUNCTIE=Detailhandel),
+        so groceries still come from Overture/OSM shop=supermarket/convenience. The city calls it
+        'geen officiële registratie'. Horeca exploitation permits (api.data.amsterdam.nl/v1/horeca/v1,
+        4,092 points with category and opening hours; CC BY 4.0 on data.overheid.nl gsy50tekojkcgw)
+        can add opening hours for cafés/restaurants.
+      verified: true
+      verification: "haal.meta.php ID 49 → 38,651 records + field list; GeoJSON endpoint returned a FeatureCollection; tallies read (e.g. 4,697 Winkel/Detailhandel, 1,288 Restaurant, 532 Praktijkruimte/Zorg, 254 Schoolgebouw)"
+    considered:
+      - source_name: "Gemeente Amsterdam Maatschappelijke voorzieningen (schools, school gyms, libraries, community centres, pools, sports halls); monthly refresh"
+        tier: A
+        categories: [schools, libraries, community, sports]
+        decision: complement
+        reason: "1,462 points with Domein/Categorie (223 primary, 74 secondary, 29 special schools; 26 libraries; 26 pools). Also on the DSO API (v0, 'in ontwikkeling'). No licence on either endpoint (DSO schema license: null), so local-only until confirmed"
+        url: "https://maps.amsterdam.nl/open_geodata/geojson_lnglat.php?KAARTLAAG=MAATSCHAPPELIJKE_VZN&THEMA=maatschappelijke_voorzieningen"
+        alt_url: https://api.data.amsterdam.nl/v1/maatschappelijke_voorzieningen/v0
+        licence_class: local-only
+        verified: true
+      - source_name: "DUO open onderwijsdata: Alle vestigingen basisonderwijs (VO and MBO files alike), national"
+        tier: A
+        categories: [schools]
+        decision: complement
+        reason: "CC BY 4.0 (data.overheid.nl adressen_bo); CSV 2.2 MB, Last-Modified 2026-10-02. Addresses only, no coordinates: geocode via BAG postcode + huisnummer"
+        url: https://onderwijsdata.duo.nl/dataset/786f12ea-6224-42fd-ab72-de4d7d879535/resource/dcc9c9a5-6d01-410b-967f-810557588ba4/download/vestigingenbo.csv
+        licence_class: shareable
+        verified: true
+      - source_name: "CBS Nabijheid voorzieningen; afstand locatie, wijk- en buurtcijfers 2025 (StatLine 86270NED)"
+        tier: A
+        categories: [validation]
+        decision: validation
+        reason: "CC BY 4.0. Not points: mean road distance from residents to the nearest GP, pharmacy, large supermarket, café, restaurant, school, library etc. per buurt, plus counts within 1/3/5 km. Use as the Step 3.4 sanity check for computed walk distances"
+        url: https://opendata.cbs.nl/ODataApi/OData/86270NED
+        licence_class: shareable
+        verified: true

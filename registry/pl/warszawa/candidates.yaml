@@ -1,0 +1,463 @@
+# City source manifest, research-phase candidates (schema: spec/input-layers.md §5)
+# Status: candidates only. Nothing downloaded or computed; coverage/sanity checks are pending (Step 3.4).
+city: warszawa
+country: PL
+languages: [pl]
+boundary: {source: "PRG (GUGiK) powiat 1465 'Warszawa' (city with powiat rights) or OSM admin boundary", id: "TERYT 1465", note: "TERYT code used in GUGiK per-powiat downloads; gmina 146501_1"}
+researched_at: 2026-10-10
+researcher: "skill research phase v0 (agent)"
+skill_version: 0.1.0
+verification_legend:
+  "true": "endpoint probed this session and responded with the expected content"
+  "partial": "catalogue/metadata verified, but the data endpoint itself was not probed or did not respond"
+  "false": "not verified; taken from search results or prior knowledge"
+licence_context: >
+  GUGiK national datasets: the geoportal 'Pobierz dane' identify popups for the 3D building models (LoD1 2024,
+  LoD2 2017) and the 3D tree models (LoD1 2023) for powiat 1465 state 'Licencja CC BY 4.0' explicitly, and
+  dane.gov.pl lists BDOT10k and NMPT as CC BY 4.0. The City of Warsaw publishes reuse terms in two places.
+  (1) The old open-data portal api.um.warszawa.pl ('Warunki korzystania z danych') says its data are official
+  materials not protected by copyright and may be used freely, with attribution 'Miasto Stołeczne Warszawa',
+  the portal URL, and the data creation and acquisition dates.
+  (2) The map portal mapa.um.warszawa.pl (CMS page 'Warunki ponownego wykorzystania informacji publicznej',
+  served from /api/modul-mapowy/open/cms) covers WMS https://wms.um.warszawa.pl/serwis and
+  WFS https://wfs.um.warszawa.pl/serwis + https://wms2.um.warszawa.pl/geoserver/wfs/wfs. Reuse is free for any
+  purpose, with these conditions: name the source 'Urząd m.st. Warszawy'; give the data creation and acquisition
+  dates and any author named; e-mail BG-informacjapubliczna@um.warszawa.pl about any processing; tell downstream
+  users the data were modified; don't disrupt service. The county geodetic resource is excluded: EGiB, GESUT,
+  BDOT500 and soil classes. Only parcel ids and geometry, and building ids, geometry and type, are fee-free.
+  These are attribution-type public-sector terms with no NC clause, so city-resource layers are classed
+  shareable (conditional). Confirm with a lawyer before the first upload, and send the processing e-mail once
+  per dataset. EGiB attributes such as floor counts are local-only. The new city portal dane.um.warszawa.pl has
+  23 datasets (CC BY 4.0 on dane.gov.pl, institution 7621), mostly transport and events, and none of the
+  environmental layers below.
+
+layers:
+
+  I02_building_heights:
+    best_candidate:
+      tier: A
+      source_name: "GUGiK Modele 3D budynków LoD1 2024 (CityGML 2.0, BDOT10k footprints, measuredHeight from LiDAR), powiat 1465 Warszawa"
+      url: https://www.geoportal.gov.pl/pl/dane/inne-dane/modele-3d-budynkow/
+      access:
+        method: download
+        endpoint: "https://opendata.geoportal.gov.pl/InneDane/Budynki3D/LOD1/2024/14/1465.zip"
+        alt_endpoints:
+          - "https://opendata.geoportal.gov.pl/InneDane/Budynki3D/LOD1/LOD1_2024.zip   # all of Poland"
+        discovery: "WMS https://mapy.geoportal.gov.pl/wss/service/PZGIK/FOTO/WMS/ModeleBudynkow3D, layer Modele_3D_budynkow_LoD1_2024, GetFeatureInfo inside the powiat returns the link"
+        registration: false
+      licence:
+        id: CC-BY-4.0
+        class: shareable
+        attribution: "Źródło: Główny Urząd Geodezji i Kartografii (GUGiK)"
+        evidence: "GetFeatureInfo popup for powiat Warszawa (2024): 'Licencja CC BY 4.0' linking creativecommons.org/licenses/by/4.0/legalcode.pl; model page: 'dostępne bezpłatnie i możliwe do dowolnego wykorzystania'"
+      vintage: "2024 (zip entries dated 2025-04-06)"
+      resolution: "per building, LoD1 block with bldg:measuredHeight (m); EPSG:2180 + PL-EVRF2007-NH (EPSG:9651)"
+      coverage: null
+      coverage_note: "153,109 buildings in powiat 1465 per the popup, against 184,474 EGiB building records in the city WFS. EGiB includes small outbuildings, so the residential share is still to be measured"
+      derivation: "measuredHeight per building; match to I01 by geometry. Use LoD2 2017 roof geometry (complement) for eaves/ridge where M01 needs facade height"
+      verified: true
+      verification: "HEAD 200, Content-Length 58,304,150. First 64 KB read: first entry 1465_N-34-126-d-d-3-2.gml; inflated text has bldg:lod1Solid and <bldg:measuredHeight uom=\"meter\">6.85</bldg:measuredHeight>. Popup read via GetFeatureInfo (EPSG:2180 bbox in central Warsaw)"
+    complements:
+      - source_name: "GUGiK Modele 3D budynków LoD2 2017 (CityGML 2.0, CAPAP), powiat 1465"
+        tier: A
+        url: https://www.geoportal.gov.pl/pl/dane/inne-dane/modele-3d-budynkow/
+        access:
+          method: download
+          endpoint: "https://opendata.geoportal.gov.pl/InneDane/Budynki3D/LOD2/1465_gml.zip"
+          alt_endpoints:
+            - "https://integracja.gugik.gov.pl/Budynki3D/pobierz.php?plik=powiaty/1465_gml.zip   # rgugik URL pattern, 112,554,466 bytes"
+          registration: false
+        licence: {id: CC-BY-4.0, class: shareable, attribution: "Źródło: GUGiK", evidence: "GetFeatureInfo popup for Modele_3D_budynkow_LoD2_2017: 'Licencja CC BY 4.0'"}
+        vintage: "state 2017 (zip entries dated 2018-11-14/16)"
+        resolution: "LoD2 (bldg:lod2Solid, RoofSurface/WallSurface/GroundSurface, roofType); EPSG:2180 + PL-KRON86-NH heights"
+        coverage_note: "139,279 buildings per popup; misses post-2017 construction. NO measuredHeight attribute: derive height as max(RoofSurface z) − min(GroundSurface z). Note the old Kronsztadt-86 vertical datum vs EVRF2007 in LoD1 2024"
+        verified: true
+        verification: "opendata URL HEAD 200, Content-Length 116,477,346. integracja URL HEAD 200 (112,554,466). The integracja server ignores Range, so one probe fetched the whole integracja zip by mistake; it was used only to list the central directory (136 entries Modele_3D/1465_N-34-*.gml, 2.67 GB uncompressed) and to read tag names from one sheet, then deleted"
+    considered:
+      - source_name: "GUGiK LoD1 via the rgugik URL pattern (integracja.gugik.gov.pl/Budynki3D/pobierz.php?plik=powiaty/lod1/1465_gml.zip)"
+        tier: A
+        decision: rejected
+        reason: "HEAD 200, 49,976,959 bytes, but its first zip entry is dated 2019-07-19, so this URL serves LoD1 2019, not 2024. Use the opendata.geoportal.gov.pl 2024 URL above. The same probably applies to Kraków's lod1 alternate"
+        url: "https://integracja.gugik.gov.pl/Budynki3D/pobierz.php?plik=powiaty/lod1/1465_gml.zip"
+        verified: true
+      - source_name: "m.st. Warszawa EGiB buildings WFS (wms2.um.warszawa.pl geoserver, layer wfs:budynki) with KONDYGNACJE_NADZIEMNE (floors above ground)"
+        tier: B
+        decision: local-only
+        reason: "184,474 buildings (numberMatched), floors per building, EPSG:2178; ladder step 3 and a good check on LoD1 heights. But floor counts are EGiB attributes, and the city's reuse terms exclude EGiB beyond ids, geometry and type. Use for validation only"
+        url: "https://wms2.um.warszawa.pl/geoserver/wfs/wfs?service=WFS&version=2.0.0&request=GetFeature&typeNames=wfs:budynki&outputFormat=application/json"
+        verified: true
+      - source_name: "GUGiK NMT / NMPT (DTM/DSM) from national LiDAR"
+        tier: A
+        decision: alternate
+        reason: "ladder step 2 (median(DSM−DTM)); CC BY 4.0 (dane.gov.pl). WCS GetCapabilities timed out (45 s) from the probe location again"
+        url: "https://mapy.geoportal.gov.pl/wss/service/PZGIK/NMPT/GRID1/WCS/DigitalSurfaceModelFormatTIFF"
+        verified: false
+      - {source_name: "EUBUCCO", tier: B, decision: rejected, reason: "superseded by tier A", verified: false}
+      - {source_name: "GlobalBuildingAtlas heights", tier: B, decision: local-only, reason: "CC BY-NC", verified: false}
+
+  I10_noise:
+    best_candidate:
+      tier: A
+      source_name: "Strategiczna mapa hałasu m.st. Warszawy 2022 (END round 4; KFB Acoustics / ACESOFT / Svantek consortium), city WMS layers HALAS_*_2022"
+      url: https://mapa.um.warszawa.pl/mapa/3b60e43a-47e9-401c-affe-958705c1b992
+      access:
+        method: wms
+        endpoint: "https://wms.um.warszawa.pl/serwis?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap"
+        layers:
+          road: [HALAS_DROGOWY_LDWN_2022, HALAS_DROGOWY_LN_2022]
+          rail: [HALAS_KOLEJOWY_LDWN_2022, HALAS_KOLEJOWY_LN_2022]
+          tram: [HALAS_TRAMWAJOWY_LDWN_2022, HALAS_TRAMWAJOWY_LN_2022]
+          industry: [HALAS_PRZEMYSLOWY_LDWN_2022, HALAS_PRZEMYSLOWY_LN_2022]
+          aircraft: [HALAS_LOTNICZY_LDWN_2022, HALAS_LOTNICZY_LN_2022]
+        crs: [EPSG:2178, EPSG:2180]
+        registration: false
+      licence:
+        id: "PL-UMWarszawa-PSI-reuse-conditions (mapa.um.warszawa.pl 'Warunki ponownego wykorzystania')"
+        class: shareable
+        class_note: "conditional: attribution + dates, e-mail notice of processing, mark modifications (see licence_context). WMS capabilities: Fees None, AccessConstraints 'None whatsoever'. Confirm before upload"
+        attribution: "Urząd m.st. Warszawy, Strategiczna mapa hałasu 2022 (data creation 2022; acquired <date>)"
+      vintage: "2022 (statutory deadline 30 June 2022; next round due 30 June 2027)"
+      resolution: "raster only: classified PNG in 5 dB bands (legend 40–45 … 75–80, >80 dB(A)), LDWN (=Lden) and LN (=Lnight), per source. Request at ≤ 2 m/px"
+      coverage: null
+      coverage_note: "whole city expected; not measured. No vector download: the portal marks every noise layer pobieranieDanych=false, and the MapViewer dataserver refuses to stream the 2022 themes (MAPVIEWER-07004). Ask BOŚ / the city for the vector contours via a reuse request ('na wniosek')"
+      derivation: "GetMap tiles → decode legend colours to 5 dB band floors per source → facade band per I01 building edge → energetic sum across sources"
+      verified: true
+      verification: "WMS GetCapabilities 200 (217 KB) lists all 10 layers; GetMap HALAS_DROGOWY_LDWN_2022 256×256 EPSG:2178 → 200 image/png with 7 legend colours + transparency; GetFeatureInfo returns an empty result (no values), so colour decoding is required"
+    considered:
+      - source_name: "mapa.um.warszawa.pl Oracle MapViewer tile cache akuwawa.{D,K,T,P,L}{LDWN,LN}_2022 (same 2022 map)"
+        tier: A
+        decision: alternate
+        reason: "Same data as tiles (mcserver getconfig: PNG, SRID 2178). Use only if the WMS is down; the WMS is the documented reuse channel"
+        url: "https://mapa.um.warszawa.pl/mapviewer/mcserver?request=getconfig&mapcache=akuwawa.DLDWN_2022"
+        verified: true
+      - source_name: "Mapa akustyczna 2017: ROZKLAD_HALASU (facade noise per building) and the 2017/2012 rounds"
+        tier: A
+        decision: rejected
+        reason: "Older round. ROZKLAD_HALASU streams as vector GeoJSON (base table BUDYNEK, fields CHRON, TYP only), so the facade dB values are not in the stream. Viewer at mapa.um.warszawa.pl/budynek/widok.html"
+        url: "https://mapa.um.warszawa.pl/mapviewer/dataserver/AKUWAWA?t=ROZKLAD_HALASU&bbox=<minx>,<miny>,<maxx>,<maxy>&bbox_srid=2178"
+        verified: true
+      - {source_name: "EEA END noise contours (Reportnet)", tier: A, decision: local-only, reason: "EEA terms restrict reuse", verified: false}
+      - {source_name: "GDDKiA strategiczne mapy hałasu 2022 (national roads incl. S2, S8, A2 in Warsaw)", tier: A, decision: complement, reason: "major roads only; published per voivodeship as graphics; licence/format not checked", url: "https://www.gov.pl/web/gddkia/strategiczne-mapy-halasu-2022", verified: partial}
+      - {source_name: "GIOŚ (national receiver of SMH 2022)", tier: A, decision: rejected, reason: "gov.pl/web/gios/strategiczne-mapy-halasu offers no download or WMS for agglomeration maps; data go in via the ekoinfonet eHałas form only", verified: true}
+
+  I06_tree_points:
+    best_candidate:
+      tier: A
+      source_name: "GUGiK Modele 3D drzew LoD1 2023 (trees > 4 m from ALS high-vegetation class + 1 m DTM, CityGML), powiat 1465 Warszawa"
+      url: https://www.geoportal.gov.pl/pl/dane/inne-dane/modele-3d-drzew/
+      access:
+        method: download
+        endpoint: "https://opendata.geoportal.gov.pl/InneDane/Drzewa3D/LOD1/2023/14/1465.zip"
+        discovery: "WMS https://mapy.geoportal.gov.pl/wss/service/PZGIK/FOTO/WMS/ModeleDrzew3D, layer Modele_3D_drzew_LoD1_2023, GetFeatureInfo"
+        registration: false
+      licence:
+        id: CC-BY-4.0
+        class: shareable
+        attribution: "Źródło: Główny Urząd Geodezji i Kartografii (GUGiK)"
+        evidence: "GetFeatureInfo popup for powiat Warszawa (2023): 'Licencja CC BY 4.0'; geoportal news 2024-01-05 'Modele 3D drzew dla m. st. Warszawy': 'nieodpłatnie i do powszechnego wykorzystania'"
+      vintage: "2023 layer (announced 2024-01-05); ALS flight year not stated"
+      resolution: "one LoD1 model per tree > 4 m with height and crown extent; includes private trees"
+      coverage: null
+      coverage_note: "1,933,646 trees in powiat 1465 per popup. Trees under 4 m are missing. No species"
+      derivation: "tree point = model centroid; height = model top − DTM; crown radius from model footprint. Join species from the city inventory (complement) where within 2 m"
+      verified: true
+      verification: "GetFeatureInfo read (TERYT 1465, 'Liczba drzew 1933646', CC BY 4.0, download link); HEAD on the zip 200, Content-Length 8,567,682,928 (8.6 GB, not downloaded). CityGML content not inspected"
+    complements:
+      - source_name: "m.st. Warszawa Baza Danych o Terenach Zieleni, trees (official WFS layer ZIELEN_DRZEWA)"
+        tier: A
+        url: https://mapa.um.warszawa.pl/mapa/02d55473-1130-4ee4-afd5-61ad9cddf8c4
+        access: {method: wfs, endpoint: "https://wfs.um.warszawa.pl/serwis?SERVICE=WFS&VERSION=1.1.0&REQUEST=GetFeature&TYPENAME=ns92528565:ZIELEN_DRZEWA", registration: false, note: "server ignores RESULTTYPE=hits (streams everything); page by OBJECTID filter"}
+        licence: {id: "PL-UMWarszawa-PSI-reuse-conditions", class: shareable, class_note: "conditional, see licence_context", attribution: "Urząd m.st. Warszawy, Baza Danych o Terenach Zieleni"}
+        vintage: "per-record AKTUALNOSC_DANYCH (2023–2024 in samples); the map portal's theme shows records updated to 2025-12-01"
+        resolution: "point per tree: inventory no., Polish and Latin species, height (WYSOKOSC), trunk girth (cm), managing unit (ZZW or district)"
+        coverage_note: "public trees managed by city units only (streets, parks). OBJECTID runs up to ~0.9 M; exact count not obtained. Compare with the GUGiK 1.93 M trees > 4 m"
+        verified: true
+        verification: "GetFeature MAXFEATURES=2 returned two records with all fields; OBJECTID binary search: records > 899,023 exist, none > 900,000"
+    considered:
+      - source_name: "api.um.warszawa.pl 'Drzewa' (CKAN datastore resource ed6217dd-c8d0-4f7b-8bed-3b7eb81a95ba)"
+        tier: A
+        decision: rejected
+        reason: "139,348 records with height, girth, crown diameter and health, no API key needed, but measurement dates 2010–2013 in every sample, and the portal labels it 'Dane testowe na potrzeby konkursu' (test data for the 'Dane po warszawsku' contest; portal launched March 2015). Licence 'Other (Public Domain)'. Superseded by the WFS"
+        url: "https://api.um.warszawa.pl/api/action/datastore_search/?resource_id=ed6217dd-c8d0-4f7b-8bed-3b7eb81a95ba"
+        verified: true
+      - {source_name: "OSM natural=tree", tier: C, decision: rejected, reason: "partial", verified: false}
+
+  I05_canopy_height:
+    best_candidate:
+      tier: A
+      source_name: "GUGiK NMPT − NMT (LiDAR-derived DSM/DTM) → canopy height model"
+      url: https://www.geoportal.gov.pl
+      access:
+        method: wcs
+        endpoint: "https://mapy.geoportal.gov.pl/wss/service/PZGIK/NMPT/GRID1/WCS/DigitalSurfaceModelFormatTIFF"
+        alt_endpoints:
+          - "https://mapy.geoportal.gov.pl/wss/service/PZGIK/NMT/GRID1/WCS/DigitalTerrainModelFormatTIFF"
+        registration: false
+      licence:
+        id: CC-BY-4.0
+        class: shareable
+        attribution: "Źródło: GUGiK"
+        evidence: "dane.gov.pl dataset 2028 'Numeryczny model pokrycia terenu (NMPT)' → CC BY 4.0 (checked in the Kraków pass)"
+      vintage: "depends on flight; Warsaw flights not identified this session"
+      resolution: "≤1 m (0.5 m for newer flights)"
+      coverage: null
+      derivation: "CHM = NMPT − NMT masked to vegetation (exclude I02 building footprints)"
+      verified: false
+      verification: "WCS GetCapabilities timed out (45 s) from the probe location, as in the Kraków pass"
+    considered:
+      - source_name: "GUGiK Modele 3D drzew LoD1 2023 rasterised to a CHM"
+        tier: A
+        decision: alternate
+        reason: "verified, CC BY 4.0 download (see I06). Rasterise crown solids (height above ground) at 1 m. Misses vegetation < 4 m; use it if the WCS stays unreachable"
+        url: "https://opendata.geoportal.gov.pl/InneDane/Drzewa3D/LOD1/2023/14/1465.zip"
+        verified: true
+      - source_name: "m.st. Warszawa Mapa Koron Drzew (tree-crown polygons with species, Aug 2018; also defoliation, discolouration, NDVI tiles)"
+        tier: A
+        decision: complement
+        reason: >
+          Crown extent per tree with species (e.g. 'jesion wyniosły ... Aktualność: sierpień 2018') for all 18
+          districts (themes BOS_KORONY_<DZIELNICA>). No height. Streams as GeoJSON from the portal's MapViewer
+          dataserver by bbox. That endpoint is undocumented, so throttle requests (reuse condition g).
+          City reuse terms apply (shareable, conditional)
+        url: "https://mapa.um.warszawa.pl/mapviewer/dataserver/DANE_WAWA?t=BOS_KORONY_ZOLIBORZ&bbox=<minx>,<miny>,<maxx>,<maxy>&bbox_srid=2178"
+        verified: true
+      - {source_name: "Meta/WRI CHMv2 1 m", tier: B, decision: fallback, reason: "use if GUGiK is unreachable", verified: false}
+      - {source_name: "Copernicus HRL Tree Cover Density 10 m", tier: B, decision: rejected, reason: "coarser", verified: false}
+
+  I08_sealed_surface:
+    best_candidate:
+      tier: B
+      source_name: "Copernicus HRL Imperviousness Density 10 m (2021; 2024 release announced)"
+      url: https://land.copernicus.eu/en/products/high-resolution-layer-imperviousness
+      access:
+        method: download
+        endpoint: https://land.copernicus.eu/en/products/high-resolution-layer-imperviousness/imperviousness-density-2021
+        registration: true
+        registration_note: "CLMS 'download by area' needs EU Login (see Kraków notes)"
+      licence:
+        id: "Copernicus data policy (Reg. (EU) 1159/2013): free, full and open, attribution"
+        class: shareable
+        attribution: "© European Union, Copernicus Land Monitoring Service, EEA"
+      vintage: "2021"
+      resolution: "10 m, 0–100%"
+      coverage: 1.0
+      verified: partial
+      verification: "product page 200; data endpoint not probed"
+    considered:
+      - source_name: "GUGiK BDOT10k, powiat 1465 Warszawa"
+        tier: B
+        decision: complement
+        reason: "CC BY 4.0 (dane.gov.pl 782); direct download; current (zip entries dated 2026-10-02). Land-cover classes (PTKM, PTPL, PTZB, BUBD) give a class-based sealed proxy to sharpen HRL at block level"
+        url: https://opendata.geoportal.gov.pl/bdot10k/schemat2021/14/1465_GML.zip
+        verified: true
+      - source_name: "m.st. Warszawa ADAPTCITY imperviousness rasters (ADAPTCITY_NIEPRZEPUSZCZALNOSC_10 / _20)"
+        tier: B
+        decision: unverified
+        reason: "listed in the map portal's MapViewer WMS (LIFE ADAPTCITY project; its NDVI layers are dated 2007–2014, so this is probably ~2014). WMS image only; vintage and resolution unknown"
+        url: "https://mapa.um.warszawa.pl/mapviewer/wms?REQUEST=GetCapabilities&SERVICE=WMS&VERSION=1.3.0"
+        verified: partial
+      - {source_name: "Warsaw mapa zasadnicza / BDOT500 (paving polygons)", tier: A, decision: rejected, reason: "county geodetic resource, explicitly excluded from the city's free reuse terms (fees apply)", verified: true}
+
+  I07_green_areas:
+    best_candidate:
+      tier: A
+      source_name: "m.st. Warszawa green-area layers: Baza Danych o Terenach Zieleni (lawns, flowerbeds, hedges, tree and shrub groups) + parcels managed by green-space managers (ZZW, districts, ZGN, ZTP, ZPTP)"
+      url: https://mapa.um.warszawa.pl/mapa/96d54d57-74a2-4cde-8d0b-bb7eccbd3695
+      access:
+        method: api
+        endpoint: "https://mapa.um.warszawa.pl/mapviewer/dataserver/DANE_WAWA?t=<theme>&bbox=<minx>,<miny>,<maxx>,<maxy>&bbox_srid=2178"
+        themes:
+          managed_public: [NIERUCHOMOSCI_W_ZARZADZIE_ZZW, NIERUCHOMOSCI_W_ZARZADZIE_DZ, NIERUCHOMOSCI_W_ZARZADZIE_ZGN, NIERUCHOMOSCI_W_ZARZADZIE_ZTP, NIERUCHOMOSCI_W_ZARZADZIE_ZPTP, NIERUCHOMOSCI_W_ZARZADZIE_INNE]
+          green_cover: [TERENY_ZIELONE, BOS_ZIELEN_TRAWNIKI_NEW, BOS_ZIELEN_GRUPY_DRZEW_NEW, BOS_ZIELEN_KRZEWY_NEW, BOS_ZIELEN_GRUPY_KRZEWOW_NEW]
+        alt_endpoints:
+          - "https://wms.um.warszawa.pl/serwis (WMS: ZIELEN_TRAWNIKI, ZIELEN_KWIETNIKI, ZIELEN_ZYWOPLOTY, ZIELEN_GRUPY_DRZEW, ZIELEN_KRZEWY, NMZ_ZIELEN)"
+        registration: false
+        access_note: "the dataserver is the portal's own GeoJSON endpoint (undocumented). Tile the city by bbox and throttle (reuse condition g); the WMS is the documented channel but gives images only"
+      licence:
+        id: "PL-UMWarszawa-PSI-reuse-conditions"
+        class: shareable
+        class_note: "conditional, see licence_context"
+        attribution: "Urząd m.st. Warszawy (Biuro Ochrony Środowiska; Zarząd Zieleni m.st. Warszawy)"
+      vintage: "inventory records carry 'Aktualność' dates (2025 in samples); manager parcels not dated"
+      resolution: "polygons; lawns carry inventory no. and managing unit; TERENY_ZIELONE has no attributes"
+      coverage: null
+      derivation: "type from theme; access = public where the polygon lies in a parcel managed by ZZW/districts/ZTP/ZPTP, else unknown. Join OSM leisure=park for names"
+      verified: true
+      verification: "map definitions read via /api/modul-mapowy/open/mapy/<uuid>; dataserver GeoJSON returned for NIERUCHOMOSCI_W_ZARZADZIE_ZZW (field ZARZADCA_TERENU), BOS_ZIELEN_TRAWNIKI_NEW (inventory label) and TERENY_ZIELONE (4,551 polygons in a 2 × 3 km bbox)"
+    considered:
+      - {source_name: "GUGiK BDOT10k land-cover classes (PTLZ, PTTR, PTRK, PTUT, PTWZ), powiat 1465", tier: B, decision: alternate, reason: "CC BY 4.0, documented bulk download, current to 2026; use if the dataserver route is rejected", url: "https://opendata.geoportal.gov.pl/bdot10k/schemat2021/14/1465_GML.zip", verified: true}
+      - {source_name: "Copernicus Urban Atlas 2021", tier: B, decision: complement, reason: "access field; EU Login for download", url: "https://land.copernicus.eu/en/products/urban-atlas", verified: partial}
+      - {source_name: "api.um.warszawa.pl 'Lasy' (forest compartments: dominant species, age, stand type)", tier: A, decision: complement, reason: "CKAN datastore resource 75bedfd5-6c83-426b-9ae5-f03651857a48; city forests only; datastore rows carry centroid x/y and shape_area, no polygon geometry seen", url: "https://api.um.warszawa.pl/api/action/datastore_search/?resource_id=75bedfd5-6c83-426b-9ae5-f03651857a48", verified: true}
+
+  I12_population:
+    best_candidate:
+      tier: B
+      source_name: "GUS NSP 2021 residents on a 1 km grid (INSPIRE Population distribution, PD.GRID.2021)"
+      url: https://portal.geo.stat.gov.pl/en/news/data-on-residents-in-a-kilometre-grid-census-2021-available-for-download/
+      access:
+        method: download
+        endpoint: "https://geo.stat.gov.pl/atom-web/download/?fileId=2795b7ed9098f86ab761352519ba1d85&name=GRID_NSP2021_RES.zip"
+        alt_endpoints:
+          - "https://geo.stat.gov.pl/atom-web/atom/PD   # INSPIRE ATOM feed; GML EPSG:3035 variant listed too"
+        registration: false
+      licence:
+        id: "GUS INSPIRE: 'Brak warunków dostępu i użytkowania' (no conditions of access and use)"
+        class: shareable
+        attribution: "Główny Urząd Statystyczny, NSP 2021"
+        evidence: "ATOM feed <rights> for every PD dataset: 'Brak warunków dostępu i użytkowania; Brak ograniczeń w publicznym dostępie'"
+      vintage: "census 31 March 2021 (feed updated 2022-12-23)"
+      resolution: "1 km cells (coarser than the 100 m contract); national SHP in EPSG:2180"
+      coverage: 1.0
+      derivation: "dasymetric: spread each cell's residents over residential buildings by LoD1 2024 volume (I02, I00 residential flag)"
+      verified: true
+      verification: "ATOM feed 200; dataset entry lists the SHP (length 23,527,606); HEAD on the download 200 application/zip, Content-Length 23,527,606"
+    considered:
+      - source_name: "m.st. Warszawa population density surfaces 2013–2023 (GESTOSC_ZALUDNIENIA_<year>, plus 2023 age bands 0–18 / 19–60 / 61–110)"
+        tier: B
+        decision: complement
+        reason: "Annual, city-made, streams as GeoJSON (2 m-step polygons, field GRIDCODE = density class only, no counts). Use as a within-cell weight surface for the dasymetric step. City reuse terms (shareable, conditional)"
+        url: "https://mapa.um.warszawa.pl/mapviewer/dataserver/DANE_WAWA?t=GESTOSC_ZALUDNIENIA_2023&bbox=<minx>,<miny>,<maxx>,<maxy>&bbox_srid=2178"
+        verified: true
+      - {source_name: "SMH 2022 population/buildings layer (akuwawa BUDYNKI_2022)", tier: A, decision: rejected, reason: "tile-only; the dataserver refuses to stream it (MAPVIEWER-07004), so per-building residents are not available, unlike Kraków", verified: true}
+      - {source_name: "GHS-POP / WorldPop 100 m", tier: B, decision: fallback, reason: "shareable, 100 m but modelled", verified: false}
+
+  I13_short_term_rentals:
+    status: gap
+    tier: null
+    fallback: "OSM tourism=apartment/guest_house + I14 attractors (C)"
+    notes: >
+      EU STR Regulation 2024/1028 applies from 20 May 2026, but Poland's implementing law (UC135, Sejm print
+      2865) was still in the Sejm in October 2026 and the CWTON register is not operational. Inside Airbnb
+      has no Polish city. Re-check when CWTON goes live.
+    considered:
+      - {source_name: "Inside Airbnb", tier: B, decision: rejected, reason: "no Poland entries on get-the-data page (2026-10-10; country list read)", verified: true}
+      - {source_name: "Centralny Wykaz Turystycznych Obiektów Noclegowych (CWTON)", tier: A, decision: rejected, reason: "not yet operational (UC135 still in parliament, Oct 2026)", verified: false}
+      - {source_name: "m.st. Warszawa WFS HOTELE / api.um.warszawa.pl 'Hotele'", tier: A, decision: complement, reason: "hotels only (not STR); useful for I14 tourism pressure", url: "https://wfs.um.warszawa.pl/serwis?SERVICE=WFS&REQUEST=GetFeature&TYPENAME=wfs:HOTELE", verified: partial}
+
+  I19_transit:
+    baseline: {source_name: "OSM via Overpass: public_transport stops/platforms + route relations; frequency = default headway per mode", tier: C, licence: {id: ODbL-1.0, class: shareable}}
+    best_candidate:
+      tier: A
+      source_name: "WarsawGTFS by Mikołaj Kuranowski (mkuran.pl), built daily from ZTM Warszawa's official timetable files"
+      url: https://mkuran.pl/gtfs/
+      access:
+        method: download
+        endpoint: https://mkuran.pl/gtfs/warsaw.zip
+        registration: false
+        format: "GTFS static (GTFS-RT alerts CC0 and vehicle positions alongside)"
+      mobility_database_id: "mdb-2092 (catalogue licence field says CC0, which is wrong; see below)"
+      operators: ["Warszawski Transport Publiczny / ZTM Warszawa (MZA buses, Tramwaje Warszawskie, Metro Warszawskie, SKM)"]
+      modes: [metro, tram, bus, rail]
+      licence:
+        id: "ZTM Warszawa 'Dane rozkładowe' usage terms + ODbL-1.0 (bus shapes from OSM)"
+        class: shareable
+        class_note: "ZTM's terms are custom public-authority terms, not a standard licence id, but they explicitly allow processing, modification, public release of results and passing processed data to third parties, with no NC clause; ZTM may withdraw future access. Bus shapes are ODbL (share-alike). Confirm with maintainers"
+        attribution: "Data: Zarząd Transportu Miejskiego w Warszawie; GTFS: Mikołaj Kuranowski; bus shapes © OpenStreetMap contributors (ODbL), per attributions.txt"
+        evidence: "mkuran.pl/gtfs: 'License: ZTM Warszawa Data Usage Terms (Polish) and ODbL for bus shapes'. ztm.waw.pl/pliki-do-pobrania/dane-rozkladowe §6 'Zgoda na przetwarzanie danych' (use, store, process/modify, publish results, 'udostępnianie przetworzonych danych innym podmiotom')"
+      vintage: "Last-Modified 2026-10-09 23:06 GMT; feed_version 2026-10-10 00:15:27 (daily)"
+      file_size_bytes: 98818151
+      coverage_note: "All ZTM urban modes: metro M1/M2 (as frequencies.txt headway blocks), 28 tram, 290 bus, 5 SKM (S1–S40) routes. Missing: Koleje Mazowieckie and WKD (take from complements)"
+      derivation: "stop-level departures per hour (weekday 07–19) from stop_times, expanding frequencies.txt for the metro; headway per route"
+      verified: true
+      verification: "HEAD 200, Accept-Ranges, Content-Length 98,818,151. Range read: 12 files incl. attributions.txt and frequencies.txt; routes.txt route_type counts 0=28, 1=2 (M1 Kabaty–Młociny, M2 Bemowo–Bródno), 2=5, 3=290"
+    complements:
+      - source_name: "ZTM Warszawa official GTFS (gtfs.ztm.waw.pl), agency 5 subset: Koleje Mazowieckie (R/RE lines) and WKD (A1, A12) inside the ZTM ticket zone"
+        tier: A
+        url: https://www.ztm.waw.pl/pliki-do-pobrania/dane-rozkladowe/
+        access: {method: download, endpoint: "https://gtfs.ztm.waw.pl/last/", alt_endpoints: ["ftp://gtfs.ztm.waw.pl/<yyyymmdd>_<yyyymmdd>.zip (anonymous; needs PASV, EPSV times out)"], registration: false, format: "GTFS static"}
+        modes: [rail]
+        licence: {id: "ZTM Warszawa 'Dane rozkładowe' usage terms", class: shareable, attribution: "Zarząd Transportu Miejskiego w Warszawie", evidence: "same terms page; section 10 names this GTFS as the data source"}
+        vintage: "20261009_20261018.zip, FTP mtime 2026-10-09 06:03; daily files with a 10-day window, archive back to Aug 2024"
+        file_size_bytes: 61464836
+        verified: true
+        verification: "HTTPS /last/ → 200, Content-Length 61,464,836, filename gtfs.zip (Range ignored; aborted by size guard). FTP listing read; Range over FTP on 20261009_20261018.zip (same length) gave the central directory and agency/feed_info/routes: agency 2 = ZTM (route_type 0 tram 28 lines, 2 = SKM S1–S40, 3 = 291 bus lines), agency 5 = 'Marszałek Województwa Mazowieckiego' (26 lines: KM R*/RE*, WKD A1/A12). route_ids repeat per service day (prefix 0–9)"
+      - source_name: "WKD GTFS (mkuran.pl)"
+        tier: A
+        url: https://mkuran.pl/gtfs/
+        access: {method: download, endpoint: "https://mkuran.pl/gtfs/wkd.zip", registration: false, format: "GTFS static"}
+        mobility_database_id: mdb-2091
+        modes: [rail]
+        licence: {id: CC0-1.0, class: shareable, attribution: "not required", evidence: "mkuran.pl: 'License: CC0 1.0'; Transitland same"}
+        vintage: "Last-Modified 2026-10-10 03:01 GMT"
+        file_size_bytes: 501213
+        verified: true
+        verification: "HEAD 200, 501,213 bytes"
+    considered:
+      - source_name: "ZTM Warszawa official GTFS as the primary feed"
+        tier: A
+        decision: alternate
+        reason: "Official and daily since 2024, and it adds KM/WKD, but it has NO metro: routes.txt has no route_type 1 and no M1/M2 lines (2026-10-09 file). Use it as primary only after ZTM adds the metro, or merge the metro from WarsawGTFS"
+        url: https://gtfs.ztm.waw.pl/last/
+        verified: true
+      - source_name: "Urząd m.st. Warszawy 'Rozkład jazdy komunikacji publicznej' API (api.um.warszawa.pl)"
+        tier: A
+        decision: rejected
+        reason: "CC BY 4.0 on dane.gov.pl (dataset 49), but it is a per-stop timetable API (not GTFS) and needs a registered API key"
+        url: https://api.um.warszawa.pl
+        verified: partial
+      - {source_name: "Polish Trains GTFS (mkuran.pl; KM, PolRegio, IC from PKP PLK)", tier: B, decision: local-only, reason: "PKP PLK / KM public-sector reuse terms not reviewed; KM inside Warsaw already in the official ZTM feed", url: "https://mkuran.pl/gtfs/polish_trains.zip", verified: true}
+      - {source_name: "mkuran.pl kolejemazowieckie.zip", tier: B, decision: rejected, reason: "discontinued 2026-03-31 (replaced by polish_trains.zip)", verified: true}
+
+  I20_amenities:
+    baseline:
+      source_name: "Overture places (categories) + OSM amenity/shop/leisure/healthcare tags"
+      tier: B
+      licence: {id: "CDLA-Permissive-2.0 (Overture places; Foursquare part Apache-2.0, AllThePlaces part CC0-1.0) / ODbL-1.0 (OSM)", class: shareable}
+      licence_evidence: "docs.overturemaps.org/attribution, Places section (read 2026-10-10)"
+    best_candidate:
+      tier: A
+      categories: [schools, kindergartens]
+      source_name: "MEN / RSPO 'Wykaz szkół i placówek oświatowych' (national school and kindergarten register, SIO state 30.09.2025), filtered to m.st. Warszawa (TERYT 1465)"
+      url: https://dane.gov.pl/pl/dataset/839
+      access:
+        method: download
+        endpoint: "https://api.dane.gov.pl/media/resources/20260216/Wykaz_szk%C3%B3%C5%82_i_plac%C3%B3wek_o%C5%9Bwiatowych_30.09.2025_.xlsx"
+        registration: false
+      licence:
+        id: CC-BY-4.0
+        class: shareable
+        attribution: "Ministerstwo Edukacji Narodowej, Rejestr Szkół i Placówek Oświatowych (dane.gov.pl)"
+        evidence: "api.dane.gov.pl/1.4/datasets/839 → license_name 'CC BY 4.0'"
+      vintage: "SIO state 30.09.2025 (resource uploaded 2026-02-16); annual"
+      resolution: "one row per school/placówka (RSPO id, type, public/non-public, address); coordinates not confirmed in the XLSX, so geocode against the city WFS PUNKTY_ADRESOWE_WGS84 or PRG address points"
+      coverage: null
+      coverage_note: "National 18.2 MB XLSX (same file as Kraków). The city WFS has no school points, only OBWODY_SZKOL_PODSTAWOWYCH catchment polygons"
+      verified: true
+      verification: "HEAD 200, Content-Length 18,244,988, Last-Modified 2026-02-16; licence via dane.gov.pl API"
+    considered:
+      - source_name: "m.st. Warszawa official WFS (wfs.um.warszawa.pl, WFS 1.0.0): BIBLIOTEKI, APTEKI, PLYWALNIE, PILKA_NOZNA, TEATRY, KLUBY_SENIORA, ..."
+        tier: A
+        categories: [libraries, sports, pharmacies]
+        decision: complement
+        reason: >
+          Point vectors with address. BIBLIOTEKI: 267 features, all AKTU_DAN 'czerwiec 2026' (current).
+          APTEKI: 679 features, all AKTU_DAN 'marzec 2017', so stale; use Rejestr Aptek for pharmacies.
+          PLYWALNIE: 58 (2019). Re-use terms on mapa.um.warszawa.pl: free for any purpose, with attribution
+          'Urząd m.st. Warszawy' + creation/acquisition dates and an e-mail notice of processing;
+          shareable-conditional, flag for legal confirmation.
+        url: "https://wfs.um.warszawa.pl/serwis?SERVICE=WFS&VERSION=1.0.0&REQUEST=GetFeature&TYPENAME=ns92528565:BIBLIOTEKI"
+        licence_class: shareable
+        verified: true
+      - source_name: "m.st. Warszawa WMS (wms.um.warszawa.pl): EDUKACJA_SZKOLY_PODSTAWOWE / PRZEDSZKOLA / LICEA, OPIEKA_SPOLECZNA_ZLOBKI_KLUBY_DZIECIECE, KULTURA_*, ~30 SPORT_* layers"
+        tier: A
+        categories: [schools, kindergartens, nurseries, culture, sports]
+        decision: unverified
+        reason: "Richest city category list (incl. nurseries), but WMS only: not offered by the WFS, and GetFeatureInfo is not a bulk download. Vector copies probably sit in the old api.um.warszawa.pl 'wfsstore', which answers 'Nieautoryzowany dostęp do danych' without a (free) API key; dataset ids not found"
+        url: "https://wms.um.warszawa.pl/serwis?SERVICE=WMS&REQUEST=GetCapabilities"
+        verified: partial
+      - source_name: "dane.um.warszawa.pl (new city portal, 23 datasets): 'otwarte-boiska' (school sports grounds open to the public), 'zajecia-sportowe'"
+        tier: A
+        categories: [sports]
+        decision: complement
+        reason: "JSON API; 'Zajęcia sportowe' is CC BY 4.0 on dane.gov.pl (dataset 39518). The portal has no school, pharmacy or library datasets"
+        url: https://dane.um.warszawa.pl/api/datasets
+        licence_class: shareable
+        verified: partial
+      - source_name: "Rejestr Aptek (CEZ, rejestry.ezdrowie.gov.pl/ra), national pharmacy register"
+        tier: A
+        categories: [pharmacies]
+        decision: alternate
+        reason: "replaces the stale WFS APTEKI layer. UI export CSV/XLSX; API probe HTTP 500; no stated licence, so local-only (see Kraków)"
+        url: https://rejestry.ezdrowie.gov.pl/ra/search/public
+        licence_class: local-only
+        verified: partial

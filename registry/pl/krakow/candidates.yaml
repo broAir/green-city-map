@@ -1,0 +1,341 @@
+# City source manifest, research-phase candidates (schema: spec/input-layers.md §5)
+# Status: candidates only. Nothing downloaded or computed; coverage/sanity checks are pending (Step 3.4).
+city: krakow
+country: PL
+languages: [pl]
+boundary: {source: "PRG (GUGiK) powiat 1261 'Kraków' (city with powiat rights) or OSM admin boundary", id: "TERYT 1261", note: "TERYT code used in GUGiK per-powiat downloads"}
+researched_at: 2026-10-09
+researcher: "skill research phase v0 (agent)"
+skill_version: 0.1.0
+verification_legend:
+  "true": "endpoint probed this session and responded with the expected content"
+  "partial": "catalogue/metadata verified, but the data endpoint itself was not probed or did not respond"
+  "false": "not verified; taken from search results or prior knowledge"
+licence_context: >
+  GUGiK national datasets (BDOT10k, NMT, NMPT, 3D building models, orthophoto) have been free of
+  charge since 31 July 2020 under the amended Geodetic and Cartographic Law (art. 40a). dane.gov.pl
+  lists BDOT10k and NMPT as CC BY 4.0, and geoportal.gov.pl describes the 3D models as "możliwe do
+  dowolnego wykorzystania". Kraków MSIP (msip.um.krakow.pl) layers carry no explicit licence
+  (copyrightText empty, and no terms page found). Under the 2021 Polish open-data act, information
+  published without conditions may arguably be reused unconditionally. That needs legal confirmation,
+  so MSIP layers are classed local-only for now.
+
+layers:
+
+  I02_building_heights:
+    best_candidate:
+      tier: A
+      source_name: "GUGiK Modele 3D budynków, LoD2 (CityGML 2.0, CAPAP project), powiat 1261 Kraków"
+      url: https://www.geoportal.gov.pl/pl/dane/inne-dane/modele-3d-budynkow/
+      access:
+        method: download
+        endpoint: "https://integracja.gugik.gov.pl/Budynki3D/pobierz.php?plik=powiaty/1261_gml.zip"
+        registration: false
+      licence:
+        id: "PL-GUGiK-free (art. 40a Prawo geodezyjne; 'dowolne wykorzystanie')"
+        class: shareable
+        attribution: "Źródło: Główny Urząd Geodezji i Kartografii (GUGiK)"
+        evidence: "geoportal.gov.pl model page: data free and 'możliwe do dowolnego wykorzystania'; no formal licence id on the page"
+      vintage: "LoD2 state 2017–2018 (page says 2017, search snippet says 2018)"
+      resolution: "per building, LoD2 roofs; LiDAR 4 or 12 pts/m²"
+      coverage: null
+      coverage_note: "58.8 MB zip of 1261_*.gml sheets returned for Kraków, so the city is inside LoD2 coverage; building share not measured. Newer buildings (post-2018) are missing; fill them from LoD1 2024"
+      derivation: "measuredHeight or (max roof − ground) per CityGML building; match to I01 (BDOT10k BUBD_A / EGiB) by geometry"
+      verified: true
+      verification: "HTTP 200 application/octet-stream, Content-Length 58,754,313; zip central directory lists Modele_3D/1261_M-34-*.gml. URL pattern from the rgugik R package (models3D_download.R)"
+    considered:
+      - source_name: "GUGiK Modele 3D budynków LoD1 (2019/2021/2022/2024), national; 2024 has measuredHeight from LiDAR median"
+        tier: A
+        decision: alternate
+        reason: "Newer footprints (BDOT10k 2024) with LiDAR median heights; preferred where LoD2 2017/18 is stale. The rgugik URL returned a 25.8 MB zip; which LoD1 year that URL serves is unconfirmed"
+        url: "https://integracja.gugik.gov.pl/Budynki3D/pobierz.php?plik=powiaty/lod1/1261_gml.zip"
+        verified: true
+      - source_name: "GUGiK NMT / NMPT (DTM/DSM) 1 m or 0.5 m from national LiDAR (ISOK and later flights)"
+        tier: A
+        decision: alternate
+        reason: "ladder step 2 (median(DSM−DTM)); NMPT listed CC BY 4.0 on dane.gov.pl (dataset 2028). WCS at mapy.geoportal.gov.pl timed out from the probe location"
+        url: "https://mapy.geoportal.gov.pl/wss/service/PZGIK/NMPT/GRID1/WCS/DigitalSurfaceModelFormatTIFF"
+        verified: false
+      - source_name: "Kraków MSIP 'Budynki ewidencyjne' (EGiB buildings) download service"
+        tier: B
+        decision: rejected
+        reason: "Footprints only; the fields inspected (ident, numer, rodz_kst) carry no floor count. EGiB floor counts may exist in GUGiK's EGiB download; not checked"
+        url: https://msip.um.krakow.pl/arcgis/rest/services/Pobieranie/Budynki/MapServer/0
+        verified: true
+      - {source_name: "EUBUCCO", tier: B, decision: rejected, reason: "superseded by tier A", verified: false}
+      - {source_name: "GlobalBuildingAtlas heights", tier: B, decision: local-only, reason: "CC BY-NC", verified: false}
+
+  I10_noise:
+    best_candidate:
+      tier: A
+      source_name: "Strategiczna mapa hałasu Krakowa 2022 (END round 4), Kraków MSIP ArcGIS service 8_2_MH_2022_IMISJA_5"
+      url: https://msip.um.krakow.pl/arcgis/rest/services/Mapa_halasu_2022
+      access:
+        method: api
+        endpoint: https://msip.um.krakow.pl/arcgis/rest/services/Mapa_halasu_2022/8_2_MH_2022_IMISJA_5/MapServer
+        layers: {road_LDWN: 1, road_LN: 3, rail_LDWN: 5, rail_LN: 7, industry_LDWN: 8, industry_LN: 9}
+        registration: false
+      licence:
+        id: unknown
+        class: local-only
+        attribution: "Gmina Miejska Kraków, Strategiczna mapa hałasu 2022"
+        evidence: "no licence or copyrightText on the service. Upgrade to shareable if the city confirms open terms or GIOŚ publishes it openly"
+      vintage: "2022 (next map due to GIOŚ by 30 June 2027 per a 2025 city reply)"
+      resolution: "5 dB contour polygons (fields ISOV1, ISOV2), LDWN (=Lden) and LN (=Lnight), per source"
+      coverage: null
+      coverage_note: "whole city expected; not measured"
+      derivation: "facade band from contour polygons per source; energetic sum across sources"
+      verified: true
+      verification: "service JSON: capabilities Map,Query,Data; layer list read; layer 1 is esriGeometryPolygon (maxRecordCount 2000), so vector query export is possible"
+    considered:
+      - {source_name: "Kraków MSIP Mapa_halasu_2017 / 2012", tier: A, decision: rejected, reason: "older rounds of the same map", url: "https://msip.um.krakow.pl/arcgis/rest/services/Mapa_halasu_2017", verified: true}
+      - {source_name: "EEA END noise contours (Reportnet)", tier: A, decision: local-only, reason: "EEA terms restrict reuse", verified: false}
+      - {source_name: "GDDKiA strategiczne mapy hałasu 2022 (national roads)", tier: A, decision: complement, reason: "major roads only; licence/format not checked", url: "https://www.gov.pl/web/gddkia/strategiczne-mapy-halasu-2022", verified: false}
+
+  I06_tree_points:
+    best_candidate:
+      tier: A
+      source_name: "Zarząd Zieleni Miejskiej w Krakowie (ZZM), inwentaryzacja drzew (MSIP service ZZM_Drzewa)"
+      url: https://msip.um.krakow.pl/arcgis/rest/services/ZZM/ZZM_Drzewa/MapServer
+      access: {method: api, endpoint: "https://msip.um.krakow.pl/arcgis/rest/services/ZZM/ZZM_Drzewa/MapServer/0/query", registration: false}
+      licence:
+        id: unknown
+        class: local-only
+        attribution: "Zarząd Zieleni Miejskiej w Krakowie"
+        evidence: "no licence on service; see licence_context"
+      vintage: "ongoing inventory (measurement dates per record: data_pom)"
+      resolution: "point per tree; species, age, measurement date, status, location code"
+      coverage: null
+      coverage_note: "11,767 records in layer 0 vs ~200,000 trees under ZZM care (Radio Kraków), so this is partial (≈6% of ZZM trees, ~1% of the >1M trees in the city). Layers 3/4 ('P1 SHP', 'S1 SHP') not inspected"
+      verified: true
+      verification: "query returnCountOnly → 11767; sample record fields read"
+    considered:
+      - source_name: "GUGiK Modele 3D drzew LoD1 (2023), trees > 4 m extracted from ALS point clouds, CityGML with height"
+        tier: A
+        decision: unverified
+        reason: "Would cover all trees > 4 m including private ones, and would beat ZZM for coverage. Free 'do powszechnego wykorzystania'. Search snippets mention Kraków-area powiaty, but coverage of 1261 is unconfirmed and the download link only appears via WMS identify"
+        url: https://www.geoportal.gov.pl/pl/dane/inne-dane/modele-3d-drzew/
+        verified: false
+      - {source_name: "OSM natural=tree", tier: C, decision: rejected, reason: "partial", verified: false}
+
+  I05_canopy_height:
+    best_candidate:
+      tier: A
+      source_name: "GUGiK NMPT − NMT (LiDAR-derived DSM/DTM) → canopy height model"
+      url: https://www.geoportal.gov.pl
+      access:
+        method: wcs
+        endpoint: "https://mapy.geoportal.gov.pl/wss/service/PZGIK/NMPT/GRID1/WCS/DigitalSurfaceModelFormatTIFF"
+        alt_endpoints:
+          - "https://mapy.geoportal.gov.pl/wss/service/PZGIK/NMT/GRID1/WCS/DigitalTerrainModelFormatTIFF"
+        registration: false
+      licence:
+        id: CC-BY-4.0
+        class: shareable
+        attribution: "Źródło: GUGiK"
+        evidence: "dane.gov.pl dataset 2028 'Numeryczny model pokrycia terenu (NMPT)' → CC BY 4.0"
+      vintage: "depends on flight; Kraków flights not identified this session"
+      resolution: "≤1 m (0.5 m for newer flights)"
+      coverage: null
+      derivation: "CHM = NMPT − NMT masked to vegetation (exclude BDOT10k BUBD_A buildings; LiDAR class 3–5 if using point clouds)"
+      verified: false
+      verification: "WCS GetCapabilities timed out (60 s) from the probe location; mapy.geoportal.gov.pl root answered 302. Licence verified via dane.gov.pl API"
+    considered:
+      - {source_name: "GUGiK Modele 3D drzew (tree heights)", tier: A, decision: complement, reason: "point heights; see I06", verified: false}
+      - {source_name: "Meta/WRI CHMv2 1 m", tier: B, decision: fallback, reason: "use if GUGiK WCS is unreachable", verified: false}
+      - {source_name: "Copernicus HRL Tree Cover Density 10 m", tier: B, decision: rejected, reason: "coarser", verified: false}
+
+  I08_sealed_surface:
+    best_candidate:
+      tier: B
+      source_name: "Copernicus HRL Imperviousness Density 10 m (2021; 2024 release announced)"
+      url: https://land.copernicus.eu/en/products/high-resolution-layer-imperviousness
+      access:
+        method: download
+        endpoint: https://land.copernicus.eu/en/products/high-resolution-layer-imperviousness/imperviousness-density-2021
+        registration: true
+        registration_note: "CLMS 'download by area' needs EU Login (inferred from 2018 metadata 'requires authentication'); WEkEO also needs an account. Anonymous EEA ImageServer exists for 2018 (GioLandPublic/HRL_ImperviousnessDensity_2018) but returned 404 for 2021"
+      licence:
+        id: "Copernicus data policy (Reg. (EU) 1159/2013): free, full and open, attribution"
+        class: shareable
+        attribution: "© European Union, Copernicus Land Monitoring Service, EEA"
+      vintage: "2021 (validation pending per product page); 2024 product update announced"
+      resolution: "10 m, 0–100%"
+      coverage: 1.0
+      verified: partial
+      verification: "product page 200; login requirement not directly confirmed"
+    considered:
+      - source_name: "GUGiK BDOT10k (1:10k topographic database), Kraków powiat 1261"
+        tier: B
+        decision: complement
+        reason: "CC BY 4.0 (dane.gov.pl 782), direct download verified (35 MB GML). Land-cover classes (PTKM transport, PTPL squares, PTZB built-up, BUBD buildings) are a class-based sealed proxy, not paving polygons; PTZB mixes gardens. Use it to sharpen HRL at block level"
+        url: https://opendata.geoportal.gov.pl/bdot10k/schemat2021/12/1261_GML.zip
+        verified: true
+      - {source_name: "Kraków mapa zasadnicza / BDOT500 (paving polygons)", tier: A, decision: rejected, reason: "not openly published (no open endpoint found)", verified: false}
+
+  I07_green_areas:
+    best_candidate:
+      tier: A
+      source_name: "ZZM BDOT_ZZM greenery layers (MSIP): las, zadrzewienie, zakrzewienie, trawnik, ogród działkowy, mokradła"
+      url: https://msip.um.krakow.pl/arcgis/rest/services/ZZM/BDOT_ZZM/MapServer
+      access: {method: api, endpoint: "https://msip.um.krakow.pl/arcgis/rest/services/ZZM/BDOT_ZZM/MapServer", registration: false}
+      licence:
+        id: unknown
+        class: local-only
+        attribution: "Zarząd Zieleni Miejskiej w Krakowie"
+        evidence: "no licence on service"
+      vintage: "not stated"
+      resolution: "polygons, detailed municipal classes"
+      coverage: null
+      derivation: "type from layer class; access is not encoded, so join OSM leisure=park / Urban Atlas for public access"
+      verified: true
+      verification: "service JSON layer list read (TERENY ZIELONE group: Las iglasty/liściasty/mieszany, Zadrzewienie, Zakrzewienie, Ogród działkowy, Plantacja, Trawnik)"
+    considered:
+      - {source_name: "GUGiK BDOT10k land-cover classes (PTLZ, PTTR, PTRK, PTUT, PTWZ)", tier: B, decision: alternate, reason: "shareable (CC BY 4.0) alternative at 1:10k; use if MSIP licence is not confirmed", url: "https://opendata.geoportal.gov.pl/bdot10k/schemat2021/12/1261_GML.zip", verified: true}
+      - {source_name: "Copernicus Urban Atlas 2021", tier: B, decision: complement, reason: "access field; EU Login for download", verified: false}
+
+  I12_population:
+    best_candidate:
+      tier: A
+      source_name: "Strategiczna mapa hałasu 2022, layer 'Liczba ludności' (residents per residential building, used for END exposure)"
+      url: https://msip.um.krakow.pl/arcgis/rest/services/Mapa_halasu_2022/8_7_MH_2022_ZALUDNIENIE/MapServer/0
+      access: {method: api, endpoint: "https://msip.um.krakow.pl/arcgis/rest/services/Mapa_halasu_2022/8_7_MH_2022_ZALUDNIENIE/MapServer/0/query", registration: false}
+      licence:
+        id: unknown
+        class: local-only
+        attribution: "Gmina Miejska Kraków"
+        evidence: "no licence on service"
+      vintage: "2022 map (population source year not stated; likely 2021)"
+      resolution: "per building polygon (fields TERYT, LOCAL_NAME, Ludnosc, Szkoly, Szpitale)"
+      coverage: null
+      coverage_note: "record count not queried. END population allocation is usually modelled from address registers, not a census count"
+      verified: true
+      verification: "layer JSON read: esriGeometryPolygon with field 'Ludnosc'"
+    considered:
+      - {source_name: "GUS NSP 2021 grid 1 km (Portal Geostatystyczny geo.stat.gov.pl)", tier: B, decision: alternate, reason: "official census but 1 km cells, coarser than contract; licence not confirmed", verified: false}
+      - {source_name: "GHS-POP / WorldPop 100 m", tier: B, decision: fallback, reason: "shareable fallback if MSIP licence not confirmed", verified: false}
+
+  I13_short_term_rentals:
+    status: gap
+    tier: null
+    fallback: "OSM tourism=apartment/guest_house + I14 attractors (C)"
+    notes: >
+      EU STR Regulation 2024/1028 applies from 20 May 2026, but Poland's implementing law (UC135, Centralny
+      Wykaz Turystycznych Obiektów Noclegowych) was not yet an operational public register per
+      2026 sources. Inside Airbnb has no Kraków snapshot. Re-check when CWTON goes live.
+    considered:
+      - {source_name: "Inside Airbnb", tier: B, decision: rejected, reason: "no Kraków snapshot on get-the-data page (2026-10-09)", verified: true}
+      - {source_name: "Centralny Wykaz Turystycznych Obiektów Noclegowych (CWTON)", tier: A, decision: rejected, reason: "not yet operational / not public", verified: false}
+      - {source_name: "Gmina ewidencja 'innych obiektów hotelarskich'", tier: B, decision: unverified, reason: "municipal register of other accommodation; open publication not found", verified: false}
+
+  I19_transit:
+    baseline: {source_name: "OSM via Overpass: public_transport stops/platforms + route relations; frequency = default headway per mode", tier: C, licence: {id: ODbL-1.0, class: shareable}}
+    best_candidate:
+      tier: A
+      source_name: "Zarząd Transportu Publicznego w Krakowie (ZTP), official KMK GTFS: three feeds (MPK buses, trams, Mobilis buses)"
+      url: https://gtfs.ztp.krakow.pl/
+      access:
+        method: download
+        endpoint: https://gtfs.ztp.krakow.pl/GTFS_KRK_A.zip
+        alt_endpoints:
+          - https://gtfs.ztp.krakow.pl/GTFS_KRK_T.zip
+          - https://gtfs.ztp.krakow.pl/GTFS_KRK_M.zip
+        registration: false
+        format: "GTFS static, split by operator/mode (GTFS-RT TripUpdates/VehiclePositions/ServiceAlerts_{A,T,M}.pb alongside)"
+      mobility_database_id: "mdb-1326 (A, bus), mdb-1270 (T, tram), mdb-2598 (M, Mobilis)"
+      operators: ["MPK S.A. w Krakowie (buses, trams)", "Mobilis Sp. z o.o. (contracted buses)"]
+      modes: [bus, tram]
+      mode_note: "tram feed uses extended route_type 900 (Tram Service), not 0; map 900 → tram"
+      licence:
+        id: unknown
+        class: local-only
+        attribution: "Zarząd Transportu Publicznego w Krakowie / MPK S.A. w Krakowie"
+        evidence: "No licence on gtfs.ztp.krakow.pl, ztp.krakow.pl/dane-otwarte, the ZTP ArcGIS org (svTzSt3AvH7sK6q9) or the city portal otwartedane.um.krakow.pl (no GTFS dataset there). MDB and Transitland record no licence. Same situation as the MSIP layers (see licence_context): ask ZTP for an explicit open licence, then upgrade to shareable"
+      vintage: "A: Last-Modified 2026-10-08, feed 2026-10-05 to 2027-01-31; T: 2026-10-09 23:02 GMT, version 20261010; M: 2026-10-09, feed 2026-10-08 to 2027-01-31"
+      file_size_bytes: {A: 21300937, T: 4861250, M: 2838283}
+      coverage_note: "Merge all three for the full KMK network: MPK bus 162 routes, tram 25 routes, Mobilis bus 33 routes. Rail (SKA agglomeration lines, Polregio) comes from the complements. Kraków has no metro"
+      derivation: "merge A+T+M (prefix ids per feed); stop-level departures per hour (weekday 07–19) from stop_times; headway per route"
+      verified: true
+      verification: "HEAD 200 application/zip with Accept-Ranges for all three; landing page lists update times (A 2026-10-08 08:49, M 2026-10-09 16:01, T 2026-10-10 01:02 local). Range reads of central directories and routes.txt: A = 162 routes route_type 3 (agency MPK); T = 25 routes route_type 900 (agency 'ZTP Kraków', includes blocks.txt); M = 33 routes route_type 3 (agency Mobilis, feed published by R&G PLUS)"
+    complements:
+      - source_name: "Koleje Małopolskie GTFS (SKA agglomeration rail and regional trains)"
+        tier: A
+        url: https://kolejemalopolskie.com.pl
+        access: {method: download, endpoint: "https://kolejemalopolskie.com.pl/rozklady_jazdy/kml-ska-gtfs.zip", registration: false, format: "GTFS static"}
+        mobility_database_id: mdb-1908
+        modes: [rail]
+        licence: {id: CC-BY-4.0, class: shareable, attribution: "Koleje Małopolskie sp. z o.o. / Województwo Małopolskie", evidence: "dane.gov.pl dataset 3083 'Transport województwa małopolskiego' (Urząd Marszałkowski) resource 46165 'Dane GTFS transportu' = CC BY 4.0 (cited by Transitland for this feed). That resource is the regional API at otwarte.dane.malopolska.pl/devportal; the operator zip itself carries no licence text, so confirm they are the same data"}
+        vintage: "Last-Modified 2026-10-02; feed 2026-10-02 to 2026-12-12"
+        file_size_bytes: 437294
+        verified: true
+        verification: "HEAD 200, Accept-Ranges; routes.txt has train-name routes (KML, DUNAJEC, LUXTORPEDA, ZKA replacement buses...) all route_type 2, no SKA line codes; shapes.txt is empty (74 bytes)"
+      - source_name: "Polish Trains GTFS (mkuran.pl, from PKP PLK schedules; PolRegio, PKP Intercity, Koleje Małopolskie, Koleje Śląskie...)"
+        tier: B
+        url: https://mkuran.pl/gtfs/
+        access: {method: download, endpoint: "https://mkuran.pl/gtfs/polish_trains.zip", registration: false, format: "GTFS static"}
+        mobility_database_id: mdb-3191
+        modes: [rail]
+        licence: {id: "PKP PLK and Koleje Mazowieckie public-sector reuse terms (Polish)", class: local-only, attribution: "PKP Polskie Linie Kolejowe S.A.; Koleje Mazowieckie; GTFS by Mikołaj Kuranowski", evidence: "mkuran.pl lists PSI reuse terms (bip.plk-sa.pl/ponowne-wykorzystywanie), not a standard licence; not reviewed this session"}
+        vintage: "Last-Modified 2026-10-10 00:53 GMT (daily)"
+        file_size_bytes: 30143101
+        verified: true
+        verification: "HEAD 200; agency.txt lists 14 rail agencies incl. PolRegio (PR) and KML; attributions.txt names PLK and KM as data sources"
+    considered:
+      - {source_name: "Małopolska regional GTFS API (otwarte.dane.malopolska.pl devportal)", tier: A, decision: unverified, reason: "CC BY 4.0 on dane.gov.pl; devportal is an API manager (registration likely). Could hold regional buses and KML; not probed", url: "https://otwarte.dane.malopolska.pl/devportal/apis", verified: false}
+      - {source_name: "Wielicka Komunikacja Wewnątrzgminna GTFS (pyrfekt.com)", tier: B, decision: rejected, reason: "outside the city; CC BY-NC-SA 4.0 (NC → local-only); inactive in MDB", url: "http://gtfs.pyrfekt.com/feeds/wieliczka_gtfs.zip", verified: false}
+      - {source_name: "ZTP ArcGIS 'Przystanki Komunikacji Miejskiej w Krakowie' feature service", tier: A, decision: complement, reason: "stop points only, no timetable; no licence. Use for stop-location QA", url: "https://services-eu1.arcgis.com/svTzSt3AvH7sK6q9/arcgis/rest/services/Przystanki_Komunikacji_Miejskiej_w_Krakowie/FeatureServer", verified: partial}
+
+  I20_amenities:
+    baseline:
+      source_name: "Overture places (categories) + OSM amenity/shop/leisure/healthcare tags"
+      tier: B
+      licence: {id: "CDLA-Permissive-2.0 (Overture places; Foursquare part Apache-2.0, AllThePlaces part CC0-1.0) / ODbL-1.0 (OSM)", class: shareable}
+      licence_evidence: "docs.overturemaps.org/attribution, Places section (read 2026-10-10)"
+    best_candidate:
+      tier: A
+      categories: [schools, kindergartens]
+      source_name: "MEN / RSPO 'Wykaz szkół i placówek oświatowych' (national school and kindergarten register, SIO state 30.09.2025), filtered to gmina Kraków (TERYT 1261)"
+      url: https://dane.gov.pl/pl/dataset/839
+      access:
+        method: download
+        endpoint: "https://api.dane.gov.pl/media/resources/20260216/Wykaz_szk%C3%B3%C5%82_i_plac%C3%B3wek_o%C5%9Bwiatowych_30.09.2025_.xlsx"
+        registration: false
+      licence:
+        id: CC-BY-4.0
+        class: shareable
+        attribution: "Ministerstwo Edukacji Narodowej, Rejestr Szkół i Placówek Oświatowych (dane.gov.pl)"
+        evidence: "api.dane.gov.pl/1.4/datasets/839 → license_name 'CC BY 4.0'"
+      vintage: "SIO state 30.09.2025 (resource data_date 2025-11-25, uploaded 2026-02-16); annual"
+      resolution: "one row per school/placówka (RSPO id, type, public/non-public, address); coordinates not confirmed in the XLSX, so geocode against PRG address points or BDOT10k"
+      coverage: null
+      coverage_note: >
+        National 18.2 MB XLSX; filter to Kraków. rspo.gov.pl shows locations on a map, but the former JSON API
+        hosts (api-rspo.men.gov.pl, api-rspo.mein.gov.pl) do not resolve in DNS as of 2026-10-10. Nurseries
+        (żłobki) are not in RSPO: see MSIP K12 below.
+      verified: true
+      verification: "HEAD 200, Content-Length 18,244,988, Last-Modified 2026-02-16; licence and resource list via dane.gov.pl API"
+    considered:
+      - source_name: "Kraków MSIP Obserwatorium/K13_ZDROWIE (pharmacies with opening hours, 24 h pharmacies, POZ clinics, specialist clinics, dentists, hospitals)"
+        tier: A
+        categories: [pharmacies, doctors]
+        decision: complement
+        reason: "260 pharmacies (layer 6, field 'aktualnosc' = 2026-10-09, i.e. refreshed daily; field id_apteki suggests a Rejestr Aptek feed, not checked), 234 POZ clinics (layer 20). No licence on the service (see licence_context), so local-only"
+        url: https://msip.um.krakow.pl/arcgis/rest/services/Obserwatorium/K13_ZDROWIE/MapServer
+        licence_class: local-only
+        verified: true
+      - source_name: "Kraków MSIP Obserwatorium: K17_KULTURA (61 libraries), Miejskie_Instytucje_Kultury, Obiekty_sportowe (Wydział Sportu, 28 May 2021), K12_EDUKACJA_2020_21 (35 public nurseries, universities)"
+        tier: A
+        categories: [libraries, culture, sports, nurseries]
+        decision: complement
+        reason: "useful category detail, but no licence (local-only) and the sport and nursery layers date from 2020/21"
+        url: https://msip.um.krakow.pl/arcgis/rest/services/Obserwatorium
+        licence_class: local-only
+        verified: true
+      - source_name: "Rejestr Aptek (CEZ, rejestry.ezdrowie.gov.pl/ra), national pharmacy register"
+        tier: A
+        categories: [pharmacies]
+        decision: alternate
+        reason: "Authoritative and national (same for every Polish city). The public SPA offers CSV/XLSX export; its backend /api/ra/pharmacies/search returned HTTP 500 to a bare probe. Data are public by law (Prawo farmaceutyczne art. 107), but no licence is stated, so local-only"
+        url: https://rejestry.ezdrowie.gov.pl/ra/search/public
+        licence_class: local-only
+        verified: partial

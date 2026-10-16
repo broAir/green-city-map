@@ -1,0 +1,27 @@
+cff-version: 1.2.0
+message: "If you use Green City Map or its city data, please cite it as below."
+type: software
+title: "Green City Map"
+abstract: >-
+  An AI agent skill that scores every residential street of a city from 0 to 100
+  for how good it is to live on: light and open views, trees and green, nature on
+  foot, quiet, few tourists, and daily needs without a car. It uses open data only
+  (OpenStreetMap, Overture Maps, Copernicus Sentinel-2, ESA WorldCover). The code is
+  under the PolyForm Noncommercial License 1.0.0; the city data it makes is under
+  the Open Database License 1.0.
+authors:
+  - alias: broAir
+repository-code: "https://github.com/broAir/green-city-map"
+license: PolyForm-Noncommercial-1.0.0
+version: "0.2.0"
+keywords:
+  - street livability
+  - walkability
+  - green space
+  - urban noise
+  - tourism
+  - OpenStreetMap
+  - Overture Maps
+  - Sentinel-2
+  - open data
+  - AI agent skill

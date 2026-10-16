@@ -1,0 +1,83 @@
+name: A score looks wrong
+description: Tell us about a street or area whose score doesn't match what it's really like.
+title: "[Wrong score] "
+labels: ["wrong score"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        You know your streets better than any satellite. Reports like this one are how the method gets better.
+
+        A street name is enough. Please don't share your own address or anything else private, and describe the place, not the people who live there.
+  - type: dropdown
+    id: city
+    attributes:
+      label: City
+      options:
+        - Kraków
+        - Warsaw (Warszawa)
+        - Amsterdam
+        - Lisbon (Lisboa)
+        - Ljubljana
+        - Dnipro
+        - Another city
+    validations:
+      required: true
+  - type: input
+    id: other_city
+    attributes:
+      label: Which other city?
+      description: Only if you picked "Another city" above.
+      placeholder: "Valencia, Spain"
+    validations:
+      required: false
+  - type: input
+    id: place
+    attributes:
+      label: Street or area
+      description: The street name and its area, or coordinates.
+      placeholder: "Grodzka, Stare Miasto"
+    validations:
+      required: true
+  - type: input
+    id: map_says
+    attributes:
+      label: What the map says
+      description: The score, and any labels the map shows for this street or area.
+      placeholder: "Scores 72, labelled quiet and leafy"
+    validations:
+      required: true
+  - type: checkboxes
+    id: parts
+    attributes:
+      label: Which parts look wrong?
+      description: Pick all that apply.
+      options:
+        - label: View and openness (the building opposite, sky)
+        - label: Green (trees and planted ground)
+        - label: Nature (parks and woods on foot)
+        - label: Quiet (road and rail noise)
+        - label: Few tourists
+        - label: Life without a car (public transport, shops, doctor, school)
+        - label: An extra score (good for families, easy on foot)
+        - label: Safety
+        - label: The district outline or name
+  - type: textarea
+    id: reality
+    attributes:
+      label: What it's really like
+      description: What would you expect instead, and why? For example, "a tram runs here every 5 minutes", or "a busy road at the end of the street is loud all night".
+    validations:
+      required: true
+  - type: dropdown
+    id: knowledge
+    attributes:
+      label: How do you know this street?
+      options:
+        - I live or lived there
+        - I go there often
+        - I checked it in person for this report
+        - From open data (please link it above)
+        - Other
+    validations:
+      required: false

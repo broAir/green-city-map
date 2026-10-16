@@ -1,0 +1,13 @@
+# The owner reviews every change. Branch protection or a ruleset on main must turn on
+# "Require review from Code Owners" for this file to have any effect (docs/UPLOAD.md).
+*                   @broAir
+
+# Changes here decide what runs on the machines of people who install the skill,
+# or what the GitHub checks trust. They never go in the same pull request as a receipt.
+/.github/           @broAir
+/.claude-plugin/    @broAir
+/.claude/           @broAir
+/skill/             @broAir
+/AGENTS.md          @broAir
+/CLAUDE.md          @broAir
+/.submissions/      @broAir

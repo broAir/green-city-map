@@ -1,0 +1,1920 @@
+<title>Green City Map</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&family=Spline+Sans+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a surveyor's instrument panel on the left, the city on a full-height canvas on the right; stacks on phones */
+:root {
+  --ground: #eef0ec;        /* map ground */
+  --panel: #fafbf8;         /* instrument panel */
+  --ink: #1b201c;
+  --ink-2: #4c544e;
+  --muted: #6f7771;
+  --rule: #dde1da;
+  --accent: #2c6a4c;        /* project green: controls only, never data */
+  --accent-ink: #ffffff;
+  --street-grey: #b4b8b2;
+  --street-quiet: #a3a8a1;  /* streets in the layers view */
+  --rail: #6c716d;
+  --motorway: #8d928e;
+  --halo: #1b201c;
+  --base-alpha: 1;
+  --div-0: #a3262a; --div-1: #d1453f; --div-2: #e57d72; --div-3: #f2b632;
+  --div-4: #6da7ec; --div-5: #3987e5; --div-6: #1c5cab;
+  --chip: #e7eae4;
+  /* layers view: each factor owns one mark type, so they stack without fighting */
+  --l-green-alpha: 0.62;
+  --l-noise-1: #f2c14e; --l-noise-2: #f0913a; --l-noise-3: #e0572a; --l-noise-4: #b8261e;
+  --l-noise-alpha: 0.55;
+  --l-sky: #262a40;
+  --l-people: #c03c78;
+  --l-transit: #2457c5;
+  --l-amen: #a07800;
+  --font-display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --font-body: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --font-data: "Spline Sans Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --ground: #121513; --panel: #181c19; --ink: #e8ece7; --ink-2: #b9c1ba; --muted: #8a938c;
+    --rule: #2a302b; --accent: #6fbf94; --accent-ink: #0f1a13; --street-grey: #3c423d; --street-quiet: #4a514b;
+    --rail: #9aa29b; --motorway: #6d746e; --halo: #f2f5f0; --base-alpha: 0.7;
+    --div-0: #f26b63; --div-1: #c2463f; --div-2: #9a403a; --div-3: #b8902a;
+    --div-4: #2f63a6; --div-5: #3d8be8; --div-6: #8dbcf2; --chip: #232924;
+    --l-green-alpha: 0.42;
+    --l-noise-1: #c99a2e; --l-noise-2: #e07a2e; --l-noise-3: #f05a34; --l-noise-4: #ff3b30; --l-noise-alpha: 0.45;
+    --l-sky: #d6daf5; --l-people: #d9609b; --l-transit: #5a8cf2; --l-amen: #a8841c;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --ground: #121513; --panel: #181c19; --ink: #e8ece7; --ink-2: #b9c1ba; --muted: #8a938c;
+  --rule: #2a302b; --accent: #6fbf94; --accent-ink: #0f1a13; --street-grey: #3c423d; --street-quiet: #4a514b;
+  --rail: #9aa29b; --motorway: #6d746e; --halo: #f2f5f0; --base-alpha: 0.7;
+  --div-0: #f26b63; --div-1: #c2463f; --div-2: #9a403a; --div-3: #b8902a;
+  --div-4: #2f63a6; --div-5: #3d8be8; --div-6: #8dbcf2; --chip: #232924;
+  --l-green-alpha: 0.42;
+  --l-noise-1: #c99a2e; --l-noise-2: #e07a2e; --l-noise-3: #f05a34; --l-noise-4: #ff3b30; --l-noise-alpha: 0.45;
+  --l-sky: #d6daf5; --l-people: #d9609b; --l-transit: #5a8cf2; --l-amen: #a8841c;
+}
+html, body { height: 100%; }
+body { margin: 0; background: var(--panel); color: var(--ink); font: 400 14px/1.45 var(--font-body); }
+.app { display: grid; grid-template-columns: minmax(300px, 380px) 1fr; height: 100%; }
+.panel { overflow-y: auto; border-right: 1px solid var(--rule); padding-block: 18px 28px; padding-inline: 20px;
+  display: flex; flex-direction: column; gap: 20px; background: var(--panel); }
+.mapwrap { position: relative; background: var(--ground); min-height: 0; }
+canvas#map { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; cursor: grab; display: block; }
+canvas#map.dragging { cursor: grabbing; }
+canvas#map:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+.brand { display: flex; flex-direction: column; gap: 2px; }
+.brand h1 { margin: 0; font: 760 26px/1.05 var(--font-display); font-stretch: 78%; letter-spacing: 0.01em; text-wrap: balance; }
+.brand p { margin: 0; color: var(--ink-2); font-size: 12.5px; }
+.eyebrow { font: 600 11px/1 var(--font-body); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin: 0 0 8px; }
+section { display: flex; flex-direction: column; }
+[hidden] { display: none !important; }
+
+.seg { display: grid; gap: 4px; background: var(--chip); padding: 4px; border-radius: 8px; }
+.seg button { font: 600 13px/1 var(--font-body); font-stretch: 88%; border: 0; border-radius: 6px; padding: 9px 4px; background: transparent; color: var(--ink-2); cursor: pointer; white-space: nowrap; }
+.seg button[aria-selected="true"], .seg button[aria-pressed="true"] { background: var(--panel); color: var(--ink); box-shadow: 0 1px 2px rgb(0 0 0 / 0.12); }
+.cities { grid-template-columns: repeat(auto-fit, minmax(62px, 1fr)); }
+.cities button { font-size: 12.5px; padding-inline: 2px; }
+.modes { grid-template-columns: 1fr 1fr; }
+.modes button { font-size: 13.5px; padding-block: 10px; }
+.modehint { margin: 8px 0 0; color: var(--ink-2); font-size: 12.5px; }
+button:focus-visible, select:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+.search { position: relative; }
+.search input { width: 100%; box-sizing: border-box; font: 400 14px/1 var(--font-body); padding: 10px 12px; border: 1px solid var(--rule); border-radius: 8px; background: var(--panel); color: var(--ink); }
+.suggest { position: absolute; z-index: 5; left: 0; right: 0; top: calc(100% + 4px); background: var(--panel); border: 1px solid var(--rule); border-radius: 8px; box-shadow: 0 8px 24px rgb(0 0 0 / 0.14); padding: 4px; display: flex; flex-direction: column; }
+.suggest button { text-align: left; border: 0; background: transparent; color: var(--ink); padding: 8px 10px; border-radius: 6px; font: 400 13.5px/1.2 var(--font-body); cursor: pointer; display: flex; justify-content: space-between; gap: 8px; }
+.suggest button:hover, .suggest button:focus-visible { background: var(--chip); }
+.suggest small { color: var(--muted); font-family: var(--font-data); font-size: 11px; }
+
+.layer select { font: 500 14px/1.2 var(--font-body); padding: 9px 10px; border: 1px solid var(--rule); border-radius: 8px; background: var(--panel); color: var(--ink); width: 100%; }
+.layer .note { margin: 8px 0 0; color: var(--ink-2); font-size: 12.5px; }
+
+.weights { display: flex; flex-direction: column; gap: 9px; }
+.wrow { display: grid; grid-template-columns: 1fr 92px 34px auto; align-items: center; gap: 8px; font-size: 13px; }
+.wrow input[type=range] { width: 100%; accent-color: var(--accent); }
+.wrow output { font: 500 12px/1 var(--font-data); color: var(--ink-2); text-align: right; font-variant-numeric: tabular-nums; }
+.must { border: 1px solid var(--rule); background: transparent; color: var(--muted); border-radius: 999px; padding: 4px 8px; font: 600 10.5px/1 var(--font-body); letter-spacing: 0.04em; text-transform: uppercase; cursor: pointer; white-space: nowrap; }
+.must[aria-pressed="true"] { border-color: var(--accent); background: var(--accent); color: var(--accent-ink); }
+.wnote { color: var(--muted); font-size: 12px; margin: 4px 0 0; }
+
+.legend .bar { height: 10px; border-radius: 5px; background: linear-gradient(90deg, var(--div-0), var(--div-1), var(--div-2), var(--div-3), var(--div-4), var(--div-5), var(--div-6)); }
+.legend .ticks { position: relative; height: 18px; margin-top: 4px; font: 500 11px/1 var(--font-data); color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.legend .ticks span { position: absolute; top: 2px; transform: translateX(-50%); white-space: nowrap; }
+.legend .ticks span.l { transform: none; } .legend .ticks span.r { transform: translateX(-100%); }
+.legend .ends { display: flex; justify-content: space-between; font-size: 12px; color: var(--ink-2); margin-top: 2px; }
+.keys { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 10px; font-size: 12px; color: var(--ink-2); }
+.keys i { display: inline-block; width: 18px; height: 3px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
+
+/* layers view */
+.lyrs { display: flex; flex-direction: column; gap: 6px; }
+.lyr { border: 1px solid var(--rule); border-radius: 10px; background: var(--panel); }
+.lyr[data-on="true"] { border-color: color-mix(in srgb, var(--ink) 30%, var(--rule)); }
+.lyr > label { display: grid; grid-template-columns: 30px 1fr auto; gap: 10px; align-items: center; padding: 9px 10px; cursor: pointer; }
+.lyr .ico { width: 30px; height: 24px; display: grid; place-items: center; }
+.lyr .t { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.lyr .t b { font-weight: 600; font-size: 13.5px; }
+.lyr .t span { color: var(--muted); font-size: 11.5px; line-height: 1.3; }
+.lyr input { appearance: none; -webkit-appearance: none; width: 34px; height: 20px; border-radius: 999px; background: var(--chip); border: 1px solid var(--rule); position: relative; cursor: pointer; margin: 0; transition: background 0.15s; }
+.lyr input::after { content: ""; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: var(--panel); box-shadow: 0 1px 2px rgb(0 0 0 / 0.3); transition: transform 0.15s; }
+.lyr input:checked { background: var(--accent); border-color: var(--accent); }
+.lyr input:checked::after { transform: translateX(14px); }
+.lyr .lg { padding: 0 10px 10px 50px; display: flex; flex-direction: column; gap: 6px; font-size: 11.5px; color: var(--ink-2); }
+.lg .ramp { height: 8px; border-radius: 4px; }
+.lg .ends { display: flex; justify-content: space-between; font: 500 10.5px/1 var(--font-data); color: var(--muted); }
+.lg .row { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: center; }
+.lg .row span { display: inline-flex; align-items: center; gap: 5px; }
+.cats { display: flex; flex-wrap: wrap; gap: 5px; }
+.cats button { display: inline-flex; align-items: center; gap: 5px; border: 1px solid var(--rule); border-radius: 999px; background: transparent; color: var(--ink-2); padding: 4px 9px 4px 7px; font: 500 11.5px/1 var(--font-body); cursor: pointer; }
+.cats button[aria-pressed="true"] { color: var(--ink); border-color: color-mix(in srgb, var(--l-amen) 70%, var(--rule)); background: color-mix(in srgb, var(--l-amen) 10%, transparent); }
+.cats button[aria-pressed="false"] svg { opacity: 0.35; }
+
+.facts { display: grid; grid-template-columns: 1fr auto; gap: 6px 12px; margin: 0; font-size: 13px; }
+.facts dt { color: var(--ink-2); }
+.facts dd { margin: 0; font: 500 12.5px/1.45 var(--font-data); text-align: right; font-variant-numeric: tabular-nums; }
+
+details { border-top: 1px solid var(--rule); padding-top: 12px; }
+details summary { cursor: pointer; font: 600 13px/1.2 var(--font-body); list-style: none; display: flex; justify-content: space-between; }
+details summary::-webkit-details-marker { display: none; }
+details summary::after { content: "+"; color: var(--muted); font-family: var(--font-data); }
+details[open] summary::after { content: "−"; }
+details .body { margin-top: 10px; font-size: 13px; color: var(--ink-2); display: flex; flex-direction: column; gap: 8px; }
+details .body p { margin: 0; max-width: 62ch; }
+.srcs { display: flex; flex-direction: column; gap: 10px; }
+.src { display: grid; grid-template-columns: 1fr; gap: 2px; padding-bottom: 8px; border-bottom: 1px dashed var(--rule); }
+.src b { font-weight: 600; color: var(--ink); font-size: 12.5px; }
+.src span { font-size: 12px; }
+
+.marks { display: flex; flex-direction: column; gap: 8px; }
+.mark { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; padding: 8px 10px; border: 1px solid var(--rule); border-radius: 8px; font-size: 12.5px; cursor: pointer; background: var(--panel); text-align: left; color: var(--ink); font-family: var(--font-body); }
+.mark .what { font-weight: 600; }
+.mark .meta { grid-column: 1 / -1; color: var(--muted); font: 400 11px/1.3 var(--font-data); }
+.mark .del { border: 0; background: transparent; color: var(--muted); cursor: pointer; font-size: 12px; padding: 0 2px; }
+.empty { color: var(--muted); font-size: 12.5px; margin: 0; }
+
+.tier { display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 4px; font: 600 10.5px/1 var(--font-data); border: 1px solid var(--rule); color: var(--ink-2); background: var(--chip); }
+.tier.A { border-color: var(--accent); color: var(--accent); }
+
+.mapctl { position: absolute; right: 14px; top: 14px; display: flex; flex-direction: column; gap: 6px; }
+.mapctl button { width: 36px; height: 36px; border-radius: 8px; border: 1px solid var(--rule); background: var(--panel); color: var(--ink); font: 600 16px/1 var(--font-data); cursor: pointer; box-shadow: 0 1px 3px rgb(0 0 0 / 0.12); }
+.status { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); background: var(--panel); border: 1px solid var(--rule); border-radius: 10px; padding: 12px 16px; font-size: 13.5px; color: var(--ink-2); max-width: 340px; text-align: center; }
+.scale { position: absolute; left: 14px; bottom: 14px; font: 500 11px/1 var(--font-data); color: var(--ink-2); display: flex; flex-direction: column; gap: 4px; pointer-events: none; }
+.scale i { display: block; height: 4px; border: 1.5px solid var(--ink-2); border-top: 0; }
+.tip { position: absolute; pointer-events: none; background: var(--panel); border: 1px solid var(--rule); border-radius: 8px; padding: 6px 9px; font-size: 12.5px; box-shadow: 0 6px 18px rgb(0 0 0 / 0.16); max-width: 320px; display: flex; flex-wrap: wrap; gap: 3px 8px; align-items: center; }
+.tip b { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tip .v { font: 500 12px/1.3 var(--font-data); color: var(--ink-2); flex-basis: 100%; }
+.dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex: none; }
+
+.card { position: absolute; right: 14px; bottom: 14px; width: min(390px, calc(100% - 28px)); max-height: calc(100% - 28px); overflow-y: auto; background: var(--panel); border: 1px solid var(--rule); border-radius: 12px; box-shadow: 0 12px 36px rgb(0 0 0 / 0.2); padding: 16px; display: flex; flex-direction: column; gap: 14px; box-sizing: border-box; }
+.card header { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+.card h2 { margin: 0; font: 700 19px/1.15 var(--font-display); font-stretch: 85%; text-wrap: balance; }
+.card h3 { margin: 0; font: 600 11px/1 var(--font-body); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.card .sub { color: var(--muted); font: 400 11.5px/1.3 var(--font-data); margin-top: 4px; }
+.card .x { border: 0; background: var(--chip); color: var(--ink); width: 28px; height: 28px; border-radius: 7px; cursor: pointer; font-size: 15px; flex: none; }
+.overall { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.overall .n { font: 600 34px/1 var(--font-data); font-variant-numeric: tabular-nums; }
+.overall .of { color: var(--muted); font-size: 12.5px; }
+.overall .cap { flex-basis: 100%; font-size: 12px; color: var(--ink-2); }
+.subs { display: flex; flex-direction: column; gap: 6px; }
+.subrow { display: grid; grid-template-columns: 118px 1fr 30px; gap: 8px; align-items: center; font-size: 12.5px; }
+.subrow .track { height: 6px; background: var(--chip); border-radius: 3px; overflow: hidden; }
+.subrow .fill { height: 100%; border-radius: 3px; }
+.subrow .v { font: 500 12px/1 var(--font-data); text-align: right; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.access { display: flex; flex-direction: column; gap: 8px; }
+.ptal { display: flex; align-items: center; gap: 10px; font-size: 12.5px; }
+.ptal .band { font: 600 15px/1 var(--font-data); padding: 6px 8px; border-radius: 6px; background: var(--chip); }
+.stops { display: grid; grid-template-columns: auto 1fr auto; gap: 4px 8px; font-size: 12.5px; align-items: center; }
+.stops .d, .needs .d { font: 500 12px/1.3 var(--font-data); text-align: right; color: var(--ink-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.needs { display: grid; grid-template-columns: 16px 1fr auto 26px; gap: 4px 8px; font-size: 12.5px; align-items: center; }
+.needs .s { font: 500 11.5px/1 var(--font-data); text-align: right; color: var(--muted); }
+.needs .nm { color: var(--muted); font-size: 11.5px; grid-column: 2 / -1; margin-top: -3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+table.vals { border-collapse: collapse; width: 100%; font-size: 12.5px; }
+table.vals td { padding: 5px 0; border-top: 1px solid var(--rule); vertical-align: top; }
+table.vals td.val { font: 500 12px/1.35 var(--font-data); text-align: right; padding-left: 8px; font-variant-numeric: tabular-nums; }
+table.vals td.sc { width: 34px; text-align: right; font: 500 12px/1.35 var(--font-data); color: var(--ink-2); }
+table.vals td.t { width: 26px; text-align: right; }
+.flag { border-top: 1px solid var(--rule); padding-top: 12px; display: flex; flex-direction: column; gap: 8px; }
+.flag h4 { margin: 0; font: 600 13.5px/1.2 var(--font-body); }
+.verdicts { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.verdicts button { border: 1px solid var(--rule); background: var(--panel); color: var(--ink); border-radius: 8px; padding: 8px; font: 500 12.5px/1.2 var(--font-body); cursor: pointer; }
+.verdicts button[aria-pressed="true"] { border-color: var(--accent); background: var(--accent); color: var(--accent-ink); }
+.flag select, .flag textarea { font: 400 13px/1.35 var(--font-body); border: 1px solid var(--rule); border-radius: 8px; padding: 8px 10px; background: var(--panel); color: var(--ink); width: 100%; box-sizing: border-box; }
+.flag textarea { min-height: 58px; resize: vertical; }
+.flag .row { display: flex; gap: 8px; align-items: center; justify-content: space-between; }
+.btn { border: 0; border-radius: 8px; padding: 9px 14px; background: var(--accent); color: var(--accent-ink); font: 600 13px/1 var(--font-body); cursor: pointer; }
+.btn:disabled { opacity: 0.5; cursor: default; }
+.flag .msg { font-size: 12px; color: var(--ink-2); }
+
+@media (max-width: 860px) {
+  .app { grid-template-columns: 1fr; grid-template-rows: auto auto; height: auto; }
+  .mapwrap { height: 62vh; min-height: 340px; order: -1; }
+  .panel { border-right: 0; border-top: 1px solid var(--rule); overflow: visible; }
+  html, body { height: auto; }
+  .card { position: fixed; left: 12px; right: 12px; bottom: 12px; width: auto; max-height: 70vh; padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px)); }
+}
+</style>
+
+<div class="app">
+  <aside class="panel" aria-label="Map controls">
+    <div class="brand">
+      <h1>Green City Map</h1>
+      <p>Street livability review · build <span id="buildv"></span> · global open data only</p>
+    </div>
+
+    <nav class="seg cities" role="tablist" aria-label="City" id="cities"></nav>
+
+    <section class="search">
+      <label class="eyebrow" for="q">Find a street</label>
+      <input id="q" type="search" autocomplete="off" placeholder="Street name">
+      <div class="suggest" id="suggest" hidden></div>
+    </section>
+
+    <section>
+      <div class="seg modes" role="tablist" aria-label="View">
+        <button role="tab" id="mode-score" aria-controls="scorepane">Score for me</button>
+        <button role="tab" id="mode-layers" aria-controls="layerpane">Explore layers</button>
+      </div>
+      <p class="modehint" id="modehint"></p>
+    </section>
+
+    <div id="scorepane" role="tabpanel" aria-labelledby="mode-score" style="display:flex;flex-direction:column;gap:20px">
+      <section class="layer">
+        <label class="eyebrow" for="layer">Colour streets by</label>
+        <select id="layer"></select>
+        <p class="note" id="layernote"></p>
+      </section>
+
+      <section id="weightsec">
+        <p class="eyebrow">What matters to you</p>
+        <div class="weights" id="weights"></div>
+        <p class="wnote">A <b>must-have</b> caps the overall score at that group's score + <span id="slack"></span>: a quiet green street you can only leave by car can't rank with one next to a tram and a shop. Green &amp; surface is capped at <span id="greencap"></span> of the weight because its metrics overlap.</p>
+      </section>
+
+      <section class="legend">
+        <p class="eyebrow" id="legendtitle">Score</p>
+        <div class="bar" aria-hidden="true"></div>
+        <div class="ticks" id="ticks"></div>
+        <div class="ends"><span id="endl">worse</span><span id="endr">better</span></div>
+        <div class="keys">
+          <span><i style="background: var(--street-grey)"></i>not scored</span>
+          <span><i style="background: var(--motorway); height: 4px"></i>motorway</span>
+          <span><i style="background: repeating-linear-gradient(90deg, var(--rail) 0 5px, transparent 5px 8px)"></i>rail</span>
+        </div>
+      </section>
+    </div>
+
+    <div id="layerpane" role="tabpanel" aria-labelledby="mode-layers" hidden>
+      <section>
+        <p class="eyebrow">Stack what you want to see</p>
+        <div class="lyrs" id="lyrs"></div>
+      </section>
+    </div>
+
+    <section>
+      <p class="eyebrow">This city's data</p>
+      <dl class="facts" id="facts"></dl>
+    </section>
+
+    <section>
+      <p class="eyebrow">Your marks in <span id="markcity"></span></p>
+      <div class="marks" id="marks"><p class="empty">Click a street on the map, then say whether its score matches what you know.</p></div>
+    </section>
+
+    <details id="srcdetails">
+      <summary>Sources: in use and found locally</summary>
+      <div class="body"><div class="srcs" id="srcs"></div></div>
+    </details>
+
+    <details>
+      <summary>How to read this map</summary>
+      <div class="body">
+        <p>Every residential street piece (up to 60 m) is scored 0–100 on each metric. Metrics with a published standard use it (EN 17037 view distance, the BRE 25° daylight rule, WHO noise limits, the 3-30-300 canopy target, Natural England's greenspace ladder, TfL's PTAL bands). The others are ranked within the city and are not comparable between cities.</p>
+        <p><b>Everyday access</b> asks whether you can live here without a car. Public transport uses a simplified PTAL: walking time to every stop in reach, plus an assumed waiting time per line, since OpenStreetMap has stops and lines but no timetables. Daily needs is the walking distance to the nearest grocery, café or bar, pharmacy, doctor, school or kindergarten, and library, cinema or gym. The walking distances are design targets, not a standard.</p>
+        <p><b>Explore layers</b> shows the evidence behind the scores. Greenery is summer greenness from Sentinel-2. Noise glows along roads in proportion to the estimated level. Sky blocked thickens streets where the opposite buildings take more sky from a first-floor window. Crowds draws people where tourist places cluster.</p>
+        <p>Noise is a road-class estimate, not a measured map, and it is uncalibrated. Only street-facing views are measured. Courtyard windows, upper floors and single street trees narrower than 10 m are not seen yet.</p>
+        <p>Tiers: <span class="tier A">A</span> authoritative local data, <span class="tier">B</span> regional or global data at adequate resolution, <span class="tier">C</span> a proxy or coarse source.</p>
+      </div>
+    </details>
+  </aside>
+
+  <main class="mapwrap">
+    <canvas id="map" tabindex="0" aria-label="Street livability map. Drag to pan, scroll or pinch to zoom, click a street for details."></canvas>
+    <div class="mapctl">
+      <button id="zin" aria-label="Zoom in">+</button>
+      <button id="zout" aria-label="Zoom out">−</button>
+      <button id="zfit" aria-label="Show whole city">⤢</button>
+    </div>
+    <div class="scale" id="scale" aria-hidden="true"><span id="scalelabel"></span><i id="scalebar"></i></div>
+    <div class="tip" id="tip" hidden></div>
+    <div class="status" id="status">Loading…</div>
+    <article class="card" id="card" hidden aria-live="polite"></article>
+  </main>
+</div>
+
+<script>
+const CONFIG = __CONFIG_JSON__;
+const BUILD = "__BUILD__";
+let CITIES = CONFIG.cities;        // the hosted site fills this from /api/cities at start
+const CATS = CONFIG.amenities.categories;
+const SCALE = { W: 10, theta: 1, hw: 100, green_across: 100, canopy_300: 1, sealed_300: 1, ndvi_500: 100,
+  ndvi_corridor: 100, nature_tiers: 1, noise_lden: 1, major_road_m: 1, tourism: 1, transit_ai: 10 };
+const TIER_LAYER = { heights_footprints: "I02_heights", heights: "I02_heights", canopy: "I05_canopy",
+  sealed: "I08_sealed", ndvi: "I09_ndvi", green_areas: "I07_green_areas", noise: "I10_noise",
+  roads: "I04_roads", tourism: "I14_tourism", transit: "I19_transit", amenities: "I20_amenities" };
+const LAYER_NAMES = { I00_boundary: "City boundary", I01_buildings: "Building footprints", I02_heights: "Building heights",
+  I03_walk_network: "Walking network", I04_roads: "Roads and rail", I05_canopy: "Tree canopy", I06_trees: "Tree inventory",
+  I07_green_areas: "Green and natural areas", I08_sealed: "Sealed surface", I09_ndvi: "Greenness (NDVI)",
+  I10_noise: "Noise", I12_population: "Population", I13_short_term_rentals: "Short-term rentals", I14_tourism: "Tourism places",
+  I19_transit: "Public transport", I20_amenities: "Everyday amenities" };
+const VERDICTS = [
+  { id: "right", label: "Looks right" },
+  { id: "too_kind", label: "Map is too kind" },
+  { id: "too_harsh", label: "Map is too harsh" },
+  { id: "data_wrong", label: "Data is wrong here" },
+];
+const MODE_LETTER = { subway: "M", train: "R", light_rail: "L", monorail: "L", ferry: "F", tram: "T", bus: "B", trolleybus: "B", minibus: "B", share_taxi: "B" };
+const MODE_NAME = { subway: "Metro", train: "Rail", light_rail: "Light rail", monorail: "Monorail", ferry: "Ferry", tram: "Tram", bus: "Bus", trolleybus: "Trolleybus", minibus: "Minibus", share_taxi: "Shared taxi" };
+const SHAPES = { groceries: "square", food_drink: "circle", pharmacy: "plus", doctor: "diamond", school: "triangle", culture_sport: "star" };
+const NOISE_BUCKETS = [{ lo: 55, w: 14, px: 1.5 }, { lo: 60, w: 26, px: 2.5 }, { lo: 65, w: 42, px: 4 }, { lo: 70, w: 62, px: 6 }];
+const SKY_BUCKETS = [{ lo: -1, w: 0.55, a: 0.22 }, { lo: 10, w: 1.1, a: 0.42 }, { lo: 25, w: 1.9, a: 0.62 }, { lo: 35, w: 2.8, a: 0.82 }, { lo: 45, w: 4, a: 1 }];
+const LAYERS = [
+  { id: "green", label: "Greenery", hint: "Summer greenness from satellite: trees, gardens, verges" },
+  { id: "noise", label: "Noise", hint: "Glow around roads and rail, by estimated level" },
+  { id: "sky", label: "Sky blocked", hint: "Thicker, darker streets: buildings opposite take more sky" },
+  { id: "people", label: "Crowds", hint: "Figures where tourist places cluster" },
+  { id: "transit", label: "Public transport", hint: "Metro and rail stations, tram and bus stops" },
+  { id: "amenities", label: "Everyday amenities", hint: "Shops, cafés, pharmacies, doctors, schools, culture" },
+];
+const NBUCKET = 14;
+
+const $ = (id) => document.getElementById(id);
+const canvas = $("map");
+const ctx = canvas.getContext("2d");
+const store = {
+  get(k, d) { try { const v = localStorage.getItem("gcm:" + k); return v == null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v) { try { localStorage.setItem("gcm:" + k, JSON.stringify(v)); } catch {} },
+};
+
+const state = {
+  cityId: store.get("city", CITIES[0]?.id || ""),
+  mode: store.get("mode", "score"),
+  layer: store.get("layer", "overall"),
+  weights: Object.assign(Object.fromEntries(CONFIG.sub_indices.map((s) => [s.id, s.default_weight])), store.get("weights2", {})),
+  must: Object.assign(Object.fromEntries(CONFIG.sub_indices.map((s) => [s.id, !!s.must_have])), store.get("must", {})),
+  on: Object.assign({ green: true, noise: true, sky: false, people: false, transit: true, amenities: false }, store.get("layers", {})),
+  cats: Object.assign(Object.fromEntries(CATS.map((c) => [c.id, true])), store.get("cats", {})),
+  cache: {},
+  city: null,
+  view: { cx: 0, cy: 0, s: 0.05 },
+  selected: -1,
+  selectedName: null,
+  hover: -1,
+  hoverPoint: null,
+  flags: [],
+  db: null,
+  userId: null,
+};
+
+
+// ---------------------------------------------------------------- theme tokens
+let T = {};
+let sprites = {};
+function readTokens() {
+  const cs = getComputedStyle(document.documentElement);
+  const g = (n) => cs.getPropertyValue(n).trim();
+  T = { ground: g("--ground"), grey: g("--street-grey"), quiet: g("--street-quiet"), rail: g("--rail"), motorway: g("--motorway"),
+    halo: g("--halo"), ink: g("--ink"), ink2: g("--ink-2"), panel: g("--panel"), accent: g("--accent"),
+    baseAlpha: parseFloat(g("--base-alpha")) || 1,
+    stops: [0, 1, 2, 3, 4, 5, 6].map((i) => hexToRgb(g("--div-" + i))),
+    greenAlpha: parseFloat(g("--l-green-alpha")) || 0.8,
+    noise: [1, 2, 3, 4].map((i) => g("--l-noise-" + i)), noiseAlpha: parseFloat(g("--l-noise-alpha")) || 0.8,
+    sky: g("--l-sky"), people: g("--l-people"), transit: g("--l-transit"), amen: g("--l-amen") };
+  sprites = {};
+}
+function hexToRgb(h) {
+  h = h.replace("#", "");
+  if (h.length === 3) h = h.split("").map((c) => c + c).join("");
+  return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
+}
+function scoreColor(score) {
+  const t = Math.max(0, Math.min(1, score / 100)) * (T.stops.length - 1);
+  const i = Math.min(T.stops.length - 2, Math.floor(t));
+  const f = t - i;
+  const a = T.stops[i], b = T.stops[i + 1];
+  return `rgb(${Math.round(a[0] + (b[0] - a[0]) * f)},${Math.round(a[1] + (b[1] - a[1]) * f)},${Math.round(a[2] + (b[2] - a[2]) * f)})`;
+}
+function bucketColor(b) { return scoreColor(((b + 0.5) / NBUCKET) * 100); }
+
+// ---------------------------------------------------------------- scoring
+const METRICS = CONFIG.metrics;
+const MBY = Object.fromEntries(METRICS.map((m) => [m.id, m]));
+function bandScore(points, x) {
+  if (x <= points[0][0]) return points[0][1];
+  for (let i = 1; i < points.length; i++) {
+    if (x <= points[i][0]) {
+      const [x0, y0] = points[i - 1], [x1, y1] = points[i];
+      return y0 + ((x - x0) / (x1 - x0)) * (y1 - y0);
+    }
+  }
+  return points[points.length - 1][1];
+}
+function rawValue(city, id, i) {
+  if (id === "daily_needs") { const s = city.scores.daily_needs[i]; return Number.isNaN(s) ? null : s; }
+  const v = city.pieces[id][i];
+  if (v === -9999) return null;
+  if (id === "W" && v === -1) return -1;
+  return v / SCALE[id];
+}
+function needDist(city, cat, i) {
+  const v = city.pieces["need_" + cat][i];
+  return v === -9999 ? null : v * 10;     // stored in 10 m units; >= 9999 m means none within reach
+}
+function needScore(city, c, i) {
+  const d = needDist(city, c.id, i);
+  return d === null ? null : bandScore(c.points, d);
+}
+function percentiles(city, id, higherBetter) {
+  // within-city percentile; tied values share their average rank (many streets have zero tourism)
+  const raw = city.pieces[id], n = city.n;
+  const idx = [];
+  for (let i = 0; i < n; i++) if (raw[i] !== -9999) idx.push(i);
+  idx.sort((a, b) => raw[a] - raw[b]);
+  const out = new Float32Array(n).fill(NaN);
+  const m = Math.max(idx.length - 1, 1);
+  for (let r = 0; r < idx.length;) {
+    let e = r;
+    while (e + 1 < idx.length && raw[idx[e + 1]] === raw[idx[r]]) e++;
+    const p = (100 * (r + e)) / 2 / m;
+    for (let k = r; k <= e; k++) out[idx[k]] = higherBetter ? p : 100 - p;
+    r = e + 1;
+  }
+  return out;
+}
+function prepareScores(city) {
+  const n = city.n;
+  city.scores = {};
+  city.needScores = {};
+  for (const c of CATS) {
+    const a = new Float32Array(n);
+    for (let i = 0; i < n; i++) { const s = needScore(city, c, i); a[i] = s === null ? NaN : s; }
+    city.needScores[c.id] = a;
+  }
+  for (const m of METRICS) {
+    const sc = m.scoring;
+    let a;
+    if (sc.type === "percentile") a = percentiles(city, m.id, sc.higher_is_better);
+    else if (sc.type === "categories") {
+      a = new Float32Array(n);
+      for (let i = 0; i < n; i++) {
+        let s = 0, k = 0;
+        for (const c of CATS) { const v = city.needScores[c.id][i]; if (!Number.isNaN(v)) { s += v; k++; } }
+        a[i] = k ? s / k : NaN;
+      }
+    } else {
+      a = new Float32Array(n);
+      for (let i = 0; i < n; i++) {
+        const x = rawValue(city, m.id, i);
+        a[i] = x === null ? NaN : m.id === "W" && x === -1 ? sc.open_value_score : bandScore(sc.points, x);
+      }
+    }
+    city.scores[m.id] = a;
+  }
+  city.subScores = {};
+  for (const si of CONFIG.sub_indices) {
+    const ms = METRICS.filter((m) => m.sub_index === si.id).map((m) => city.scores[m.id]);
+    const a = new Float32Array(n);
+    for (let i = 0; i < n; i++) {
+      let s = 0, c = 0;
+      for (const arr of ms) { const v = arr[i]; if (!Number.isNaN(v)) { s += v; c++; } }
+      a[i] = c ? s / c : NaN;
+    }
+    city.subScores[si.id] = a;
+  }
+}
+function effectiveWeights() {
+  const w = {};
+  let tot = 0;
+  for (const si of CONFIG.sub_indices) { w[si.id] = Math.max(0, +state.weights[si.id] || 0); tot += w[si.id]; }
+  if (tot <= 0) return w;
+  for (const k in w) w[k] /= tot;
+  // enforce every max_share cap; repeat, because moving weight can push another group over its cap
+  const cap = (si) => si.max_share || 1;
+  for (let pass = 0; pass < CONFIG.sub_indices.length; pass++) {
+    const over = CONFIG.sub_indices.filter((si) => w[si.id] > cap(si) + 1e-12);
+    if (!over.length) break;
+    let excess = 0;
+    for (const si of over) { excess += w[si.id] - cap(si); w[si.id] = cap(si); }
+    const free = CONFIG.sub_indices.filter((o) => w[o.id] > 0 && w[o.id] < cap(o));
+    const ftot = free.reduce((a, o) => a + w[o.id], 0);
+    if (ftot <= 0) break;
+    for (const o of free) w[o.id] += excess * (w[o.id] / ftot);
+  }
+  return w;
+}
+// overall = weighted mean of sub-indices, capped by every must-have (its score + slack)
+function overallDetail(city, i, w) {
+  let s = 0, c = 0;
+  for (const si of CONFIG.sub_indices) {
+    const v = city.subScores[si.id][i];
+    if (!Number.isNaN(v) && w[si.id] > 0) { s += v * w[si.id]; c += w[si.id]; }
+  }
+  if (!c) return { score: NaN, mean: NaN, cap: null };
+  const mean = s / c;
+  let score = mean, cap = null;
+  for (const si of CONFIG.sub_indices) {
+    if (!state.must[si.id]) continue;
+    const v = city.subScores[si.id][i];
+    const sl = si.slack ?? CONFIG.must_have_slack;
+    if (!Number.isNaN(v) && v + sl < score) { score = v + sl; cap = si; }
+  }
+  return { score, mean, cap };
+}
+function overallAt(city, i, w) { return overallDetail(city, i, w).score; }
+function layerScores(city) {
+  const n = city.n;
+  if (state.layer === "overall") {
+    const w = effectiveWeights();
+    const a = new Float32Array(n);
+    for (let i = 0; i < n; i++) a[i] = overallAt(city, i, w);
+    return a;
+  }
+  if (state.layer.startsWith("sub:")) return city.subScores[state.layer.slice(4)];
+  if (state.layer.startsWith("n:")) return city.needScores[state.layer.slice(2)];
+  return city.scores[state.layer.slice(2)];
+}
+
+// ---------------------------------------------------------------- data loading
+function decodeLine(arr, start = 0) {
+  const n = (arr.length - start) / 2;
+  const out = new Float32Array(n * 2);
+  let x = 0, y = 0;
+  for (let k = 0; k < n; k++) { x += arr[start + 2 * k]; y += arr[start + 2 * k + 1]; out[2 * k] = x; out[2 * k + 1] = y; }
+  return out;
+}
+function rng(seed) {   // mulberry32: deterministic figure placement
+  return () => { seed |= 0; seed = (seed + 0x6d2b79f5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+}
+function decodeCity(raw, layers) {
+  const p = raw.pieces;
+  const n = p.geom.length;
+  const lines = new Array(n);
+  const bbox = new Float32Array(n * 4);
+  const len = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    const l = decodeLine(p.geom[i]);
+    lines[i] = l;
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity, L = 0;
+    for (let k = 0; k < l.length; k += 2) {
+      x0 = Math.min(x0, l[k]); x1 = Math.max(x1, l[k]); y0 = Math.min(y0, l[k + 1]); y1 = Math.max(y1, l[k + 1]);
+      if (k) L += Math.hypot(l[k] - l[k - 2], l[k + 1] - l[k - 1]);
+    }
+    bbox.set([x0, y0, x1, y1], i * 4);
+    len[i] = L;
+  }
+  const city = { raw, n, lines, bbox, len, pieces: p, names: raw.names, classes: raw.classes,
+    grey: raw.grey.map((g) => decodeLine(g)),
+    context: raw.context.map((c) => ({ kind: c[0], line: decodeLine(c, 1) })),
+    boundary: raw.boundary.map((b) => decodeLine(b)), extent: raw.extent, layers, details: null };
+  // grid index for picking
+  const cell = 60;
+  city.cell = cell;
+  city.grid = new Map();
+  for (let i = 0; i < n; i++) {
+    const gx0 = Math.floor(bbox[i * 4] / cell), gy0 = Math.floor(bbox[i * 4 + 1] / cell);
+    const gx1 = Math.floor(bbox[i * 4 + 2] / cell), gy1 = Math.floor(bbox[i * 4 + 3] / cell);
+    for (let gx = gx0; gx <= gx1; gx++) for (let gy = gy0; gy <= gy1; gy++) {
+      const key = gx * 100003 + gy;
+      let arr = city.grid.get(key);
+      if (!arr) city.grid.set(key, (arr = []));
+      arr.push(i);
+    }
+  }
+  // street-name index for search
+  city.byName = new Map();
+  for (let i = 0; i < n; i++) {
+    const nm = city.names[p.name[i]];
+    if (!nm) continue;
+    let arr = city.byName.get(nm);
+    if (!arr) city.byName.set(nm, (arr = []));
+    arr.push(i);
+  }
+  city.nameKeys = [...city.byName.keys()].map((k) => ({ name: k, key: fold(k) }));
+  // static paths
+  city.greyPath = new Path2D();
+  for (const l of city.grey) addLine(city.greyPath, l);
+  city.motorPath = new Path2D();
+  city.railPath = new Path2D();
+  for (const c of city.context) addLine(c.kind === 1 ? city.railPath : city.motorPath, c.line);
+  city.boundaryPath = new Path2D();
+  for (const b of city.boundary) { addLine(city.boundaryPath, b); city.boundaryPath.closePath(); }
+  city.allPath = new Path2D();
+  for (let i = 0; i < n; i++) addLine(city.allPath, lines[i]);
+  // layers view: noise and sky buckets
+  city.noisePaths = NOISE_BUCKETS.map(() => new Path2D());
+  city.skyPaths = SKY_BUCKETS.map(() => new Path2D());
+  for (let i = 0; i < n; i++) {
+    const db = p.noise_lden[i];
+    if (db !== -9999) for (let b = NOISE_BUCKETS.length - 1; b >= 0; b--) if (db >= NOISE_BUCKETS[b].lo) { addLine(city.noisePaths[b], lines[i]); break; }
+    const th = p.W[i] === -1 ? 0 : p.theta[i];
+    if (th !== -9999) for (let b = SKY_BUCKETS.length - 1; b >= 0; b--) if (th >= SKY_BUCKETS[b].lo) { addLine(city.skyPaths[b], lines[i]); break; }
+  }
+  // crowds: figures along streets, count by tourism density (places per km2), placed deterministically
+  const fx = [], fy = [], fs = [];
+  for (let i = 0; i < n; i++) {
+    const d = p.tourism[i];
+    if (d === -9999 || d < 12) continue;
+    const per100 = Math.min(10, d / 140);
+    const r = rng(i * 7919 + 13);
+    let count = (per100 * len[i]) / 100;
+    count = Math.floor(count) + (r() < count % 1 ? 1 : 0);
+    const l = lines[i];
+    for (let k = 0; k < count; k++) {
+      const seg = Math.min(l.length / 2 - 2, Math.floor(r() * (l.length / 2 - 1)));
+      const t = r();
+      const ax = l[seg * 2], ay = l[seg * 2 + 1], bx = l[seg * 2 + 2], by = l[seg * 2 + 3];
+      const dx = bx - ax, dy = by - ay, L = Math.hypot(dx, dy) || 1;
+      const side = (r() < 0.5 ? -1 : 1) * (3.5 + r() * 5);
+      fx.push(ax + dx * t - (dy / L) * side); fy.push(ay + dy * t + (dx / L) * side); fs.push(0.85 + r() * 0.3);
+    }
+  }
+  city.people = { x: Float32Array.from(fx), y: Float32Array.from(fy), s: Float32Array.from(fs) };
+  prepareScores(city);
+  return city;
+}
+function addLine(path, l) {
+  path.moveTo(l[0], l[1]);
+  for (let k = 2; k < l.length; k += 2) path.lineTo(l[k], l[k + 1]);
+}
+function fold(s) { return s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase(); }
+
+async function fetchJSON(url) {
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(`${url}: HTTP ${r.status}`);
+  return r.json();
+}
+function loadImage(url) {
+  return new Promise((res) => { const im = new Image(); im.onload = () => res(im); im.onerror = () => res(null); im.src = url; });
+}
+function undelta(a) { const out = new Int32Array(a.length); let x = 0; for (let k = 0; k < a.length; k++) { x += a[k]; out[k] = x; } return out; }
+function loadCity(id) {
+  // cache the promise, so switching back and forth never decodes a city twice; keep the last 2 cities
+  if (!state.cache[id]) {
+    state.cache[id] = loadCityNow(id).catch((e) => { delete state.cache[id]; throw e; });
+    state.cacheOrder = (state.cacheOrder || []).filter((c) => c !== id).concat(id);
+    while (state.cacheOrder.length > 2) delete state.cache[state.cacheOrder.shift()];
+  } else state.cacheOrder = (state.cacheOrder || []).filter((c) => c !== id).concat(id);
+  return state.cache[id];
+}
+async function loadCityNow(id) {
+  const base = `${CONFIG.dataBase || "data/"}${id}/`;
+  const [raw, bm, manifest, layers] = await Promise.all([
+    fetchJSON(base + "streets.json"), fetchJSON(base + "basemap.json"), fetchJSON(base + "manifest.json").catch(() => null),
+    fetchJSON(base + "layers.json").catch(() => null)]);
+  const city = decodeCity(raw, layers);
+  city.manifest = manifest;
+  city.basemap = bm.chunks.map((c) => ({ ...c, img: null }));
+  city.basemap.forEach((c) => loadImage(base + c.file).then((im) => { c.img = im; requestDraw(); }));
+  city.green = bm.green ? { ...bm.green, img: null } : null;
+  if (city.green) loadImage(base + bm.green.file).then((im) => { city.green.img = im; requestDraw(); });
+  // card details (nearest stops and amenities) load after the map is up
+  fetchJSON(base + "details.json").then((d) => {
+    const det = {};
+    for (const [k, v] of Object.entries(d)) if (Array.isArray(v)) det[k] = k.endsWith("_i") ? undelta(v) : v;
+    city.details = det;
+    if (state.city === city && state.selected >= 0) { renderCard(); requestDraw(); }
+  }).catch(() => {});
+  delete raw.pieces.geom;          // decoded into city.lines; the JSON copy is no longer needed
+  return city;
+}
+
+// ---------------------------------------------------------------- rendering
+let colorPaths = [];
+let nanPath = null;
+let curScores = null;
+function rebuildColorPaths() {
+  const city = state.city;
+  if (!city) return;
+  curScores = layerScores(city);
+  colorPaths = Array.from({ length: NBUCKET }, () => new Path2D());
+  nanPath = new Path2D();
+  for (let i = 0; i < city.n; i++) {
+    const s = curScores[i];
+    const path = Number.isNaN(s) ? nanPath : colorPaths[Math.min(NBUCKET - 1, Math.floor((s / 100) * NBUCKET))];
+    addLine(path, city.lines[i]);
+  }
+}
+let drawPending = false;
+function requestDraw() { if (!drawPending) { drawPending = true; requestAnimationFrame(draw); } }
+function size() {
+  const r = canvas.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = Math.max(1, Math.round(r.width * dpr));
+  canvas.height = Math.max(1, Math.round(r.height * dpr));
+  return { w: r.width, h: r.height, dpr };
+}
+let dims = { w: 1, h: 1, dpr: 1 };
+function toScreen(x, y) { const v = state.view; return [(x - v.cx) * v.s + dims.w / 2, dims.h / 2 - (y - v.cy) * v.s]; }
+function toWorld(sx, sy) { const v = state.view; return [(sx - dims.w / 2) / v.s + v.cx, (dims.h / 2 - sy) / v.s + v.cy]; }
+function worldTransform(c, f = 1) {
+  const v = state.view, { w, h, dpr } = dims, s = v.s * dpr * f;
+  c.setTransform(s, 0, 0, -s, (w / 2 - v.cx * v.s) * dpr * f, (h / 2 + v.cy * v.s) * dpr * f);
+  return s;
+}
+const glow = document.createElement("canvas");
+const gctx = glow.getContext("2d");
+const canFilter = "filter" in ctx;
+function drawNoiseGlow(city) {
+  const f = 0.5;
+  const gw = Math.ceil(canvas.width * f), gh = Math.ceil(canvas.height * f);
+  if (glow.width !== gw || glow.height !== gh) { glow.width = gw; glow.height = gh; }
+  gctx.setTransform(1, 0, 0, 1, 0, 0);
+  gctx.clearRect(0, 0, gw, gh);
+  const s = worldTransform(gctx, f);
+  gctx.lineCap = "round"; gctx.lineJoin = "round";
+  const pxw = (b) => Math.max(b.w, (b.px * dims.dpr * f) / s);
+  // motorways and main-line rail are the loudest sources; they are context lines, not scored streets
+  gctx.globalAlpha = 0.55;
+  gctx.strokeStyle = T.noise[3]; gctx.lineWidth = pxw(NOISE_BUCKETS[3]) * 1.1; gctx.stroke(city.motorPath);
+  gctx.strokeStyle = T.noise[2]; gctx.lineWidth = pxw(NOISE_BUCKETS[2]); gctx.stroke(city.railPath);
+  const far = state.view.s < 0.09;   // whole-city view: only 60 dB and louder, or everything glows
+  NOISE_BUCKETS.forEach((b, k) => {
+    if (far && k === 0) return;
+    gctx.globalAlpha = 0.3 + 0.14 * k;
+    gctx.strokeStyle = T.noise[k];
+    gctx.lineWidth = pxw(b);
+    gctx.stroke(city.noisePaths[k]);
+  });
+  gctx.globalAlpha = 1;
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.globalAlpha = T.noiseAlpha;
+  ctx.imageSmoothingEnabled = true;
+  if (canFilter) ctx.filter = `blur(${Math.round(5 * dims.dpr)}px)`;
+  ctx.drawImage(glow, 0, 0, canvas.width, canvas.height);
+  ctx.restore();
+}
+function getSprite(kind, color, scale) {
+  const key = kind + color + scale;
+  if (sprites[key]) return sprites[key];
+  const dpr = dims.dpr;
+  const W = 10, H = 15;
+  const c = document.createElement("canvas");
+  c.width = Math.ceil(W * scale * dpr) + 2; c.height = Math.ceil(H * scale * dpr) + 2;
+  const g = c.getContext("2d");
+  g.scale(scale * dpr, scale * dpr);
+  g.translate(0.5, 0.5);
+  g.fillStyle = color;
+  g.strokeStyle = T.panel; g.lineWidth = 1.1;
+  // a walking figure: head, torso, two legs
+  g.beginPath(); g.arc(5, 2.6, 2.1, 0, Math.PI * 2); g.fill(); g.stroke();
+  g.beginPath(); g.moveTo(2.6, 6.2); g.quadraticCurveTo(5, 4.9, 7.4, 6.2); g.lineTo(7, 10); g.lineTo(6.3, 14); g.lineTo(5.2, 14); g.lineTo(5, 11);
+  g.lineTo(4.8, 14); g.lineTo(3.7, 14); g.lineTo(3, 10); g.closePath(); g.stroke(); g.fill();
+  sprites[key] = c;
+  return c;
+}
+function viewBounds(pad = 30) {
+  const [x0, y1] = toWorld(-pad, -pad), [x1, y0] = toWorld(dims.w + pad, dims.h + pad);
+  return [x0, y0, x1, y1];
+}
+function drawPeople(city) {
+  const P = city.people, v = state.view, [x0, y0, x1, y1] = viewBounds();
+  ctx.setTransform(dims.dpr, 0, 0, dims.dpr, 0, 0);
+  if (v.s < 0.35) {
+    ctx.fillStyle = T.people; ctx.globalAlpha = 0.55;
+    const r = v.s < 0.12 ? 1.1 : 1.6;
+    const step = v.s < 0.08 ? 3 : v.s < 0.15 ? 2 : 1;
+    for (let k = 0; k < P.x.length; k += step) {
+      const x = P.x[k], y = P.y[k];
+      if (x < x0 || x > x1 || y < y0 || y > y1) continue;
+      const [sx, sy] = toScreen(x, y);
+      ctx.fillRect(sx - r, sy - r, r * 2, r * 2);
+    }
+    ctx.globalAlpha = 1;
+    return;
+  }
+  const sc = Math.min(1.5, 0.75 + v.s * 0.35);
+  for (let k = 0; k < P.x.length; k++) {
+    const x = P.x[k], y = P.y[k];
+    if (x < x0 || x > x1 || y < y0 || y > y1) continue;
+    const spr = getSprite("p", T.people, Math.round(sc * P.s[k] * 4) / 4);
+    const [sx, sy] = toScreen(x, y);
+    ctx.drawImage(spr, sx - spr.width / dims.dpr / 2, sy - spr.height / dims.dpr, spr.width / dims.dpr, spr.height / dims.dpr);
+  }
+}
+function shapePath(g, shape, x, y, r) {
+  g.beginPath();
+  switch (shape) {
+    case "square": g.rect(x - r * 0.85, y - r * 0.85, r * 1.7, r * 1.7); break;
+    case "diamond": g.moveTo(x, y - r * 1.15); g.lineTo(x + r * 1.15, y); g.lineTo(x, y + r * 1.15); g.lineTo(x - r * 1.15, y); g.closePath(); break;
+    case "triangle": g.moveTo(x, y - r * 1.15); g.lineTo(x + r * 1.1, y + r * 0.85); g.lineTo(x - r * 1.1, y + r * 0.85); g.closePath(); break;
+    case "plus": { const a = r * 0.42, b = r * 1.1; g.moveTo(x - a, y - b); g.lineTo(x + a, y - b); g.lineTo(x + a, y - a); g.lineTo(x + b, y - a); g.lineTo(x + b, y + a); g.lineTo(x + a, y + a); g.lineTo(x + a, y + b); g.lineTo(x - a, y + b); g.lineTo(x - a, y + a); g.lineTo(x - b, y + a); g.lineTo(x - b, y - a); g.lineTo(x - a, y - a); g.closePath(); break; }
+    case "star": for (let k = 0; k < 10; k++) { const a = -Math.PI / 2 + (k * Math.PI) / 5, rr = k % 2 ? r * 0.5 : r * 1.2; const px = x + Math.cos(a) * rr, py = y + Math.sin(a) * rr; k ? g.lineTo(px, py) : g.moveTo(px, py); } g.closePath(); break;
+    default: g.arc(x, y, r, 0, Math.PI * 2);
+  }
+}
+function amenRadius() { const s = state.view.s; return Math.max(2, Math.min(5.5, 1.6 + s * 3)); }
+function drawAmenities(city) {
+  const L = city.layers?.pois;
+  if (!L) return;
+  const v = state.view, [x0, y0, x1, y1] = viewBounds();
+  ctx.setTransform(dims.dpr, 0, 0, dims.dpr, 0, 0);
+  const catIds = city.layers.categories.map((c) => c.id);
+  const show = catIds.map((id) => state.cats[id] !== false);
+  if (v.s < 0.12) {
+    ctx.fillStyle = T.amen; ctx.globalAlpha = 0.6;
+    for (let k = 0; k < L.x.length; k++) {
+      if (!show[L.cat[k]]) continue;
+      const x = L.x[k], y = L.y[k];
+      if (x < x0 || x > x1 || y < y0 || y > y1) continue;
+      const [sx, sy] = toScreen(x, y);
+      ctx.fillRect(sx - 0.9, sy - 0.9, 1.8, 1.8);
+    }
+    ctx.globalAlpha = 1;
+    return;
+  }
+  const r = amenRadius();
+  ctx.fillStyle = T.amen; ctx.strokeStyle = T.panel; ctx.lineWidth = r >= 3 ? 1.2 : 0.8;
+  for (let k = 0; k < L.x.length; k++) {
+    if (!show[L.cat[k]]) continue;
+    const x = L.x[k], y = L.y[k];
+    if (x < x0 || x > x1 || y < y0 || y > y1) continue;
+    const [sx, sy] = toScreen(x, y);
+    shapePath(ctx, SHAPES[catIds[L.cat[k]]], sx, sy, r);
+    ctx.fill(); ctx.stroke();
+  }
+}
+function stopRadius(rapid) { const s = state.view.s; return rapid ? Math.max(3.5, Math.min(8, 3 + s * 4)) : Math.max(1.4, Math.min(4.5, 1.1 + s * 2.6)); }
+function stopModes(L, k) { return L.mode_list.filter((m, b) => L.modes[k] & (1 << b)); }
+function drawStop(L, k, sx, sy, emph = false) {
+  const rapid = L.rapid[k] === 1;
+  const r = stopRadius(rapid) * (emph ? 1.25 : 1);
+  if (rapid) {
+    ctx.beginPath(); ctx.arc(sx, sy, r, 0, Math.PI * 2);
+    ctx.fillStyle = T.panel; ctx.fill();
+    ctx.lineWidth = Math.max(1.6, r * 0.32); ctx.strokeStyle = T.transit; ctx.stroke();
+    if (r >= 5.5) {
+      const ms = stopModes(L, k);
+      const letter = MODE_LETTER[["subway", "train", "light_rail", "monorail", "ferry"].find((m) => ms.includes(m))] || "R";
+      ctx.fillStyle = T.transit; ctx.font = `700 ${Math.round(r * 1.15)}px ${getComputedStyle(document.body).getPropertyValue("--font-body") || "sans-serif"}`;
+      ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(letter, sx, sy + 0.5);
+    } else { ctx.beginPath(); ctx.arc(sx, sy, r * 0.35, 0, Math.PI * 2); ctx.fillStyle = T.transit; ctx.fill(); }
+  } else {
+    const tram = stopModes(L, k).includes("tram");
+    ctx.fillStyle = T.transit;
+    if (tram) { ctx.beginPath(); ctx.rect(sx - r * 0.9, sy - r * 0.9, r * 1.8, r * 1.8); } else { ctx.beginPath(); ctx.arc(sx, sy, r, 0, Math.PI * 2); }
+    ctx.fill();
+    if (r >= 2.6 || emph) { ctx.lineWidth = 1; ctx.strokeStyle = T.panel; ctx.stroke(); }
+  }
+}
+function drawTransit(city) {
+  const L = city.layers?.stops;
+  if (!L) return;
+  const v = state.view, [x0, y0, x1, y1] = viewBounds();
+  ctx.setTransform(dims.dpr, 0, 0, dims.dpr, 0, 0);
+  // surface stops first, stations on top; station names when zoomed in
+  for (const pass of [0, 1]) {
+    if (pass === 0 && v.s < 0.05) continue;
+    for (let k = 0; k < L.x.length; k++) {
+      if (L.rapid[k] !== pass) continue;
+      const x = L.x[k], y = L.y[k];
+      if (x < x0 || x > x1 || y < y0 || y > y1) continue;
+      const [sx, sy] = toScreen(x, y);
+      ctx.globalAlpha = pass === 0 && v.s < 0.15 ? 0.7 : 1;
+      drawStop(L, k, sx, sy);
+    }
+  }
+  ctx.globalAlpha = 1;
+  if (v.s >= 0.45) {
+    ctx.font = `600 11.5px ${getComputedStyle(document.body).fontFamily}`;
+    ctx.textAlign = "left"; ctx.textBaseline = "middle";
+    ctx.lineWidth = 3; ctx.strokeStyle = T.panel; ctx.fillStyle = T.transit;
+    for (let k = 0; k < L.x.length; k++) {
+      if (L.rapid[k] !== 1 && v.s < 1.6) continue;
+      const x = L.x[k], y = L.y[k];
+      if (x < x0 || x > x1 || y < y0 || y > y1) continue;
+      const nm = city.layers.names[L.name[k]];
+      if (!nm) continue;
+      const [sx, sy] = toScreen(x, y);
+      const dx = stopRadius(L.rapid[k] === 1) + 4;
+      ctx.strokeText(nm, sx + dx, sy); ctx.fillText(nm, sx + dx, sy);
+    }
+  }
+}
+function midpoint(city, i) { const l = city.lines[i], m = Math.floor(l.length / 4) * 2; return [l[m], l[m + 1]]; }
+// selected street: thin lines to the nearest stop and the nearest amenity of each kind
+function drawConstellation(city, i) {
+  const d = city.details, L = city.layers;
+  if (!d || !L) return;
+  const [mx, my] = midpoint(city, i);
+  const [msx, msy] = toScreen(mx, my);
+  ctx.setTransform(dims.dpr, 0, 0, dims.dpr, 0, 0);
+  const targets = [];
+  for (const g of ["s", "r"]) {
+    const k = d[`stop_${g}_i`]?.[i];
+    const dist = d[`stop_${g}_d`]?.[i];
+    if (k >= 0 && dist !== -9999 && dist * 10 <= 1500) targets.push({ kind: "stop", k, x: L.stops.x[k], y: L.stops.y[k] });
+  }
+  CATS.forEach((c) => {
+    const k = d[`need_${c.id}_i`]?.[i];
+    const dist = needDist(city, c.id, i);
+    if (k >= 0 && dist !== null && dist <= 2500) targets.push({ kind: "poi", k, cat: c.id, x: L.pois.x[k], y: L.pois.y[k] });
+  });
+  ctx.setLineDash([4, 4]); ctx.lineWidth = 1.3; ctx.strokeStyle = T.ink; ctx.globalAlpha = 0.55;
+  for (const t of targets) { const [sx, sy] = toScreen(t.x, t.y); ctx.beginPath(); ctx.moveTo(msx, msy); ctx.lineTo(sx, sy); ctx.stroke(); }
+  ctx.setLineDash([]); ctx.globalAlpha = 1;
+  for (const t of targets) {
+    const [sx, sy] = toScreen(t.x, t.y);
+    if (t.kind === "stop") drawStop(L.stops, t.k, sx, sy, true);
+    else {
+      const r = Math.max(4, amenRadius() * 1.3);
+      shapePath(ctx, SHAPES[t.cat], sx, sy, r + 2); ctx.fillStyle = T.panel; ctx.fill();
+      shapePath(ctx, SHAPES[t.cat], sx, sy, r); ctx.fillStyle = T.amen; ctx.fill();
+    }
+  }
+}
+function draw() {
+  drawPending = false;
+  const { w, h, dpr } = dims;
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.fillStyle = T.ground;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  const city = state.city;
+  if (!city) return;
+  const v = state.view;
+  const s = v.s * dpr;
+  const layersMode = state.mode === "layers";
+  if (layersMode && state.on.green && city.green?.img) {
+    const c = city.green;
+    ctx.imageSmoothingEnabled = true;
+    ctx.globalAlpha = T.greenAlpha;
+    const [sx, sy] = toScreen(c.x, c.y + c.h);
+    ctx.drawImage(c.img, sx * dpr, sy * dpr, c.w * s, c.h * s);
+  }
+  // basemap chunks
+  ctx.imageSmoothingEnabled = v.s < 0.5;
+  ctx.globalAlpha = T.baseAlpha;
+  for (const c of city.basemap) {
+    if (!c.img) continue;
+    const [sx, sy] = toScreen(c.x, c.y + c.h);
+    ctx.drawImage(c.img, sx * dpr, sy * dpr, c.w * s, c.h * s);
+  }
+  ctx.globalAlpha = 1;
+  if (layersMode && state.on.noise) drawNoiseGlow(city);
+  worldTransform(ctx);
+  ctx.lineCap = "round"; ctx.lineJoin = "round";
+  const px = (p) => (p * dpr) / s;
+  // city boundary
+  ctx.setLineDash([px(6), px(4)]);
+  ctx.strokeStyle = T.ink; ctx.globalAlpha = 0.35; ctx.lineWidth = px(1);
+  ctx.stroke(city.boundaryPath);
+  ctx.globalAlpha = 1; ctx.setLineDash([]);
+  const lw = Math.max(1.1, Math.min(5, 0.9 + v.s * 2.2));
+  ctx.strokeStyle = T.grey; ctx.lineWidth = px(Math.max(0.8, lw * 0.55));
+  ctx.stroke(city.greyPath);
+  ctx.strokeStyle = T.motorway; ctx.lineWidth = px(lw * 1.4);
+  ctx.stroke(city.motorPath);
+  ctx.strokeStyle = T.rail; ctx.lineWidth = px(Math.max(1, lw * 0.6)); ctx.setLineDash([px(5), px(3)]);
+  ctx.stroke(city.railPath);
+  ctx.setLineDash([]);
+  if (layersMode) {
+    if (state.on.sky) {
+      ctx.strokeStyle = T.sky;
+      SKY_BUCKETS.forEach((b, k) => { ctx.globalAlpha = b.a; ctx.lineWidth = px(Math.max(0.6, lw * b.w * 0.75)); ctx.stroke(city.skyPaths[k]); });
+      ctx.globalAlpha = 1;
+    } else {
+      ctx.strokeStyle = T.quiet; ctx.lineWidth = px(Math.max(0.8, lw * 0.7)); ctx.stroke(city.allPath);
+    }
+  } else {
+    if (nanPath) { ctx.strokeStyle = T.grey; ctx.lineWidth = px(lw); ctx.stroke(nanPath); }
+    ctx.lineWidth = px(lw);
+    for (let b = 0; b < NBUCKET; b++) { ctx.strokeStyle = bucketColor(b); ctx.stroke(colorPaths[b]); }
+  }
+  // highlight: searched street, selection, hover
+  const streetColor = (i) => {
+    if (!layersMode) { const sc = curScores[i]; return Number.isNaN(sc) ? T.grey : scoreColor(sc); }
+    return state.on.sky ? T.sky : T.ink2;
+  };
+  const hl = (idxs, width) => {
+    worldTransform(ctx);
+    const path = new Path2D();
+    for (const i of idxs) addLine(path, city.lines[i]);
+    ctx.strokeStyle = T.halo; ctx.lineWidth = px(width + 3.5); ctx.stroke(path);
+    ctx.strokeStyle = T.panel; ctx.lineWidth = px(width + 1); ctx.stroke(path);
+    for (const i of idxs) {
+      ctx.strokeStyle = streetColor(i);
+      ctx.lineWidth = px(width);
+      const p1 = new Path2D(); addLine(p1, city.lines[i]); ctx.stroke(p1);
+    }
+  };
+  if (state.selectedName && city.byName.has(state.selectedName)) hl(city.byName.get(state.selectedName), lw + 0.5);
+  if (layersMode) {
+    if (state.on.people) drawPeople(city);
+    if (state.on.amenities) drawAmenities(city);
+    if (state.on.transit) drawTransit(city);
+  }
+  if (state.selected >= 0) { hl([state.selected], lw + 2); drawConstellation(city, state.selected); }
+  if (state.hover >= 0 && state.hover !== state.selected) hl([state.hover], lw + 1);
+  // review marks
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  for (const f of state.flags) {
+    if (f.city !== state.cityId) continue;
+    const [sx, sy] = toScreen(f.x_utm - city.raw.origin[0], f.y_utm - city.raw.origin[1]);
+    if (sx < -20 || sy < -20 || sx > w + 20 || sy > h + 20) continue;
+    ctx.beginPath(); ctx.moveTo(sx, sy - 9); ctx.lineTo(sx + 7, sy); ctx.lineTo(sx, sy + 9); ctx.lineTo(sx - 7, sy); ctx.closePath();
+    ctx.fillStyle = T.accent; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = T.panel; ctx.stroke();
+  }
+  updateScale();
+}
+function updateScale() {
+  const target = 110 / state.view.s;
+  const pow = Math.pow(10, Math.floor(Math.log10(target)));
+  const nice = [1, 2, 5, 10].map((m) => m * pow).filter((m) => m <= target).pop() || pow;
+  $("scalebar").style.width = nice * state.view.s + "px";
+  $("scalelabel").textContent = nice >= 1000 ? `${nice / 1000} km` : `${nice} m`;
+}
+
+// ---------------------------------------------------------------- view control
+function fit() {
+  const e = state.city.extent;
+  const ew = e[2] - e[0], eh = e[3] - e[1];
+  state.view.s = Math.min(dims.w / ew, dims.h / eh) * 0.94;
+  state.view.cx = (e[0] + e[2]) / 2;
+  state.view.cy = (e[1] + e[3]) / 2;
+  state.minS = state.view.s * 0.5;
+  requestDraw();
+}
+function zoomAt(factor, sx, sy) {
+  const [wx, wy] = toWorld(sx, sy);
+  const v = state.view;
+  v.s = Math.max(state.minS || 0.005, Math.min(12, v.s * factor));
+  v.cx = wx - (sx - dims.w / 2) / v.s;
+  v.cy = wy + (sy - dims.h / 2) / v.s;
+  requestDraw();
+}
+function fitBounds(x0, y0, x1, y1) {
+  const pad = 80;
+  const v = state.view;
+  v.s = Math.min(8, Math.min((dims.w - pad) / Math.max(x1 - x0, 50), (dims.h - pad) / Math.max(y1 - y0, 50)));
+  v.cx = (x0 + x1) / 2; v.cy = (y0 + y1) / 2;
+  requestDraw();
+}
+function pick(sx, sy, radiusPx = 12) {
+  const city = state.city;
+  if (!city) return -1;
+  const [wx, wy] = toWorld(sx, sy);
+  const r = radiusPx / state.view.s;
+  const c = city.cell;
+  let best = -1, bestD = r;
+  const seen = new Set();
+  for (let gx = Math.floor((wx - r) / c); gx <= Math.floor((wx + r) / c); gx++) {
+    for (let gy = Math.floor((wy - r) / c); gy <= Math.floor((wy + r) / c); gy++) {
+      const arr = city.grid.get(gx * 100003 + gy);
+      if (!arr) continue;
+      for (const i of arr) {
+        if (seen.has(i)) continue;
+        seen.add(i);
+        const l = city.lines[i];
+        for (let k = 0; k + 3 < l.length; k += 2) {
+          const d = segDist(wx, wy, l[k], l[k + 1], l[k + 2], l[k + 3]);
+          if (d < bestD) { bestD = d; best = i; }
+        }
+      }
+    }
+  }
+  return best;
+}
+// stops and amenities under the pointer (layers view only)
+function pickPoint(sx, sy) {
+  const city = state.city, L = city?.layers;
+  if (!L || state.mode !== "layers") return null;
+  let best = null, bd = 9;
+  if (state.on.transit && state.view.s >= 0.05) {
+    for (let k = 0; k < L.stops.x.length; k++) {
+      const [px, py] = toScreen(L.stops.x[k], L.stops.y[k]);
+      const d = Math.hypot(px - sx, py - sy) - (L.stops.rapid[k] ? 2 : 0);
+      if (d < bd) { bd = d; best = { kind: "stop", k }; }
+    }
+  }
+  if (state.on.amenities && state.view.s >= 0.12) {
+    const ids = L.categories.map((c) => c.id);
+    for (let k = 0; k < L.pois.x.length; k++) {
+      if (state.cats[ids[L.pois.cat[k]]] === false) continue;
+      const [px, py] = toScreen(L.pois.x[k], L.pois.y[k]);
+      const d = Math.hypot(px - sx, py - sy);
+      if (d < bd) { bd = d; best = { kind: "poi", k }; }
+    }
+  }
+  return best;
+}
+function segDist(px, py, x0, y0, x1, y1) {
+  const dx = x1 - x0, dy = y1 - y0;
+  const L = dx * dx + dy * dy;
+  let t = L ? ((px - x0) * dx + (py - y0) * dy) / L : 0;
+  t = Math.max(0, Math.min(1, t));
+  const qx = x0 + t * dx - px, qy = y0 + t * dy - py;
+  return Math.sqrt(qx * qx + qy * qy);
+}
+
+// pointer interaction: drag to pan, wheel / pinch to zoom, click to select
+const pointers = new Map();
+let dragMoved = false, pinchDist = 0, lastPos = null;
+canvas.addEventListener("pointerdown", (e) => {
+  canvas.setPointerCapture(e.pointerId);
+  pointers.set(e.pointerId, [e.offsetX, e.offsetY]);
+  dragMoved = false; lastPos = [e.offsetX, e.offsetY];
+  if (pointers.size === 2) { const [a, b] = [...pointers.values()]; pinchDist = Math.hypot(a[0] - b[0], a[1] - b[1]); }
+  canvas.classList.add("dragging");
+});
+canvas.addEventListener("pointermove", (e) => {
+  if (pointers.has(e.pointerId)) {
+    const prev = pointers.get(e.pointerId);
+    pointers.set(e.pointerId, [e.offsetX, e.offsetY]);
+    if (pointers.size === 2) {
+      const [a, b] = [...pointers.values()];
+      const d = Math.hypot(a[0] - b[0], a[1] - b[1]);
+      if (pinchDist > 0) zoomAt(d / pinchDist, (a[0] + b[0]) / 2, (a[1] + b[1]) / 2);
+      pinchDist = d; dragMoved = true;
+      return;
+    }
+    const dx = e.offsetX - prev[0], dy = e.offsetY - prev[1];
+    if (Math.abs(e.offsetX - lastPos[0]) + Math.abs(e.offsetY - lastPos[1]) > 4) dragMoved = true;
+    state.view.cx -= dx / state.view.s;
+    state.view.cy += dy / state.view.s;
+    requestDraw();
+    return;
+  }
+  if (e.pointerType === "mouse") hoverAt(e.offsetX, e.offsetY);
+});
+function endPointer(e) {
+  const was = pointers.has(e.pointerId);
+  pointers.delete(e.pointerId);
+  if (pointers.size < 2) pinchDist = 0;
+  if (pointers.size === 0) canvas.classList.remove("dragging");
+  if (was && !dragMoved && pointers.size === 0 && e.type === "pointerup") select(pick(e.offsetX, e.offsetY, e.pointerType === "mouse" ? 10 : 18));
+}
+canvas.addEventListener("pointerup", endPointer);
+canvas.addEventListener("pointercancel", endPointer);
+canvas.addEventListener("pointerleave", () => {
+  clearTimeout(hoverTimer); hoverTimer = 0;
+  if (state.hover !== -1) { state.hover = -1; requestDraw(); }
+  $("tip").hidden = true;
+});
+canvas.addEventListener("wheel", (e) => { e.preventDefault(); zoomAt(Math.exp(-e.deltaY * 0.0016), e.offsetX, e.offsetY); }, { passive: false });
+canvas.addEventListener("dblclick", (e) => zoomAt(2, e.offsetX, e.offsetY));
+canvas.addEventListener("keydown", (e) => {
+  const step = 80 / state.view.s;
+  const k = e.key;
+  if (k === "+" || k === "=") zoomAt(1.4, dims.w / 2, dims.h / 2);
+  else if (k === "-") zoomAt(1 / 1.4, dims.w / 2, dims.h / 2);
+  else if (k === "ArrowLeft") { state.view.cx -= step; requestDraw(); }
+  else if (k === "ArrowRight") { state.view.cx += step; requestDraw(); }
+  else if (k === "ArrowUp") { state.view.cy += step; requestDraw(); }
+  else if (k === "ArrowDown") { state.view.cy -= step; requestDraw(); }
+  else if (k === "Escape") select(-1);
+  else return;
+  e.preventDefault();
+});
+$("zin").onclick = () => zoomAt(1.6, dims.w / 2, dims.h / 2);
+$("zout").onclick = () => zoomAt(1 / 1.6, dims.w / 2, dims.h / 2);
+$("zfit").onclick = () => fit();
+
+let hoverTimer = 0;
+function placeTip(sx, sy) {
+  const tip = $("tip");
+  tip.hidden = false;
+  const tw = tip.offsetWidth;
+  tip.style.left = Math.max(8, Math.min(sx + 14, dims.w - tw - 8)) + "px";
+  tip.style.top = Math.max(8, sy - 40) + "px";
+}
+function hoverAt(sx, sy) {
+  if (hoverTimer) return;
+  hoverTimer = setTimeout(() => {
+    hoverTimer = 0;
+    const tip = $("tip");
+    const city = state.city;
+    const pt = pickPoint(sx, sy);
+    if (pt) {
+      if (state.hover !== -1) { state.hover = -1; requestDraw(); }
+      tip.innerHTML = "";
+      const b = document.createElement("b"), vv = document.createElement("span"); vv.className = "v";
+      const L = city.layers;
+      if (pt.kind === "stop") {
+        const ms = stopModes(L.stops, pt.k).map((m) => MODE_NAME[m]);
+        b.textContent = L.names[L.stops.name[pt.k]] || "Unnamed stop";
+        const refs = L.stops.routes[pt.k].map(([m, r]) => r).slice(0, 10).join(", ");
+        vv.textContent = `${[...new Set(ms)].join(" · ")} · ${L.stops.n_routes[pt.k]} line${L.stops.n_routes[pt.k] === 1 ? "" : "s"}${refs ? ": " + refs : ""}`;
+      } else {
+        const c = L.categories[L.pois.cat[pt.k]];
+        b.textContent = L.names[L.pois.name[pt.k]] || c.label;
+        vv.textContent = c.label + (L.pois.src[pt.k] ? " · Overture" : " · OSM");
+      }
+      tip.append(b, vv);
+      placeTip(sx, sy);
+      return;
+    }
+    const i = pick(sx, sy, 8);
+    if (i !== state.hover) { state.hover = i; requestDraw(); }
+    if (i < 0) { tip.hidden = true; return; }
+    tip.innerHTML = "";
+    if (state.mode === "score") {
+      const sc = curScores[i];
+      const dot = document.createElement("span"); dot.className = "dot";
+      dot.style.background = Number.isNaN(sc) ? T.grey : scoreColor(sc);
+      tip.append(dot);
+    }
+    const b = document.createElement("b"); b.textContent = streetLabel(city, i);
+    const vv = document.createElement("span"); vv.className = "v"; vv.textContent = tipValue(city, i);
+    tip.append(b, vv);
+    placeTip(sx, sy);
+  }, 30);
+}
+function streetLabel(city, i) {
+  const nm = city.names[city.pieces.name[i]];
+  return nm || "Unnamed " + city.classes[city.pieces.cls[i]].replace("_", " ");
+}
+function tipValue(city, i) {
+  if (state.mode === "layers") {
+    const parts = [];
+    const p = city.pieces;
+    if (state.on.noise && p.noise_lden[i] !== -9999) parts.push(`≈${p.noise_lden[i]} dB`);
+    if (state.on.sky) parts.push(p.W[i] === -1 ? "open" : p.theta[i] === -9999 ? "sky ?" : `sky blocked ${p.theta[i]}°`);
+    if (state.on.green && p.ndvi_corridor[i] !== -9999) parts.push(`green ${(p.ndvi_corridor[i] / 100).toFixed(2)}`);
+    if (state.on.people) parts.push(fmt("tourism", rawValue(city, "tourism", i), city, i));
+    if (state.on.transit) { const ai = rawValue(city, "transit_ai", i); if (ai !== null) parts.push(`PTAL ${ptalBand(ai)}`); }
+    if (state.on.amenities) parts.push(`${needsWithin(city, i)} of ${CATS.length} needs in 10 min`);
+    return parts.join(" · ");
+  }
+  if (state.layer.startsWith("m:")) {
+    const id = state.layer.slice(2);
+    return fmt(id, rawValue(city, id, i), city, i);
+  }
+  if (state.layer.startsWith("n:")) { const d = needDist(city, state.layer.slice(2), i); return d === null ? "no data" : walk(d); }
+  const sc = curScores[i];
+  return Number.isNaN(sc) ? "no data" : `${Math.round(sc)} / 100`;
+}
+
+// ---------------------------------------------------------------- formatting
+function walk(d) {
+  if (d === null || d === undefined || d < 0) return "no data";
+  if (d >= 9999) return "none within reach";
+  const min = Math.max(1, Math.round(d / CONFIG.walk_speed_m_per_min));
+  return `${d >= 1000 ? (d / 1000).toFixed(1) + " km" : Math.round(d / 10) * 10 + " m"} · ${min} min`;
+}
+function ptalBand(ai) {
+  if (!(ai > 0)) return "0";
+  for (const [hi, lab] of [[2.5, "1a"], [5, "1b"], [10, "2"], [15, "3"], [20, "4"], [25, "5"], [40, "6a"]]) if (ai <= hi) return lab;
+  return "6b";
+}
+function needsWithin(city, i) {
+  let k = 0;
+  for (const c of CATS) { const d = needDist(city, c.id, i); if (d !== null && d <= CONFIG.amenities.reach_m) k++; }
+  return k;
+}
+function fmt(id, v, city, i) {
+  if (v === null || v === undefined) return "no data";
+  switch (id) {
+    case "W": return v === -1 ? "open (nothing opposite within 60 m)" : `${v.toFixed(1)} m`;
+    case "theta": return `${Math.round(v)}°`;
+    case "hw": return v.toFixed(2);
+    case "green_across": return `${Math.round(v * 100)}% of view`;
+    case "canopy_300": case "sealed_300": return `${Math.round(v)}%`;
+    case "ndvi_500": case "ndvi_corridor": return v.toFixed(2);
+    case "nature_tiers": {
+      const d = city.details;
+      if (!d) return `${v} of 5`;
+      const km = (x) => (x === -9999 || x * 10 >= 99990 ? "far" : x * 10 >= 1000 ? `${(x / 100).toFixed(1)} km` : `${x * 10} m`);
+      return `${v} of 5 · 2 ha: ${km(d.nature_d2[i])} · 20 ha: ${km(d.nature_d20[i])}`;
+    }
+    case "noise_lden": return `≈ ${Math.round(v)} dB`;
+    case "major_road_m": return v === 0 ? "on one" : v >= 1000 ? `${(v / 1000).toFixed(1)} km` : `${Math.round(v)} m`;
+    case "tourism": return `${Math.round(v)} tourist places per km²`;
+    case "transit_ai": return `PTAL ${ptalBand(v)} · AI ${v.toFixed(1)}`;
+    case "daily_needs": return `${needsWithin(city, i)} of ${CATS.length} within 10 min`;
+    default: return String(v);
+  }
+}
+function tierFor(m) {
+  const layers = state.city?.manifest?.layers_in_use || state.city?.raw.layers || {};
+  const t = layers[TIER_LAYER[m.tier_from]]?.tier || "";
+  return String(t).startsWith("A") ? "A" : String(t).startsWith("B") ? "B" : "C";
+}
+
+// ---------------------------------------------------------------- icons
+const SVGNS = "http://www.w3.org/2000/svg";
+function svgEl(w, h) { const s = document.createElementNS(SVGNS, "svg"); s.setAttribute("width", w); s.setAttribute("height", h); s.setAttribute("viewBox", `0 0 ${w} ${h}`); s.setAttribute("aria-hidden", "true"); return s; }
+function shapeSvg(shape, size = 14, color = "var(--l-amen)") {
+  const s = svgEl(size, size);
+  const p = document.createElementNS(SVGNS, "path");
+  // build the same geometry as the map marker, as an SVG path string
+  const r = size * 0.36, x = size / 2, y = size / 2;
+  const pts = [];
+  const poly = (arr) => "M" + arr.map((q) => q.map((n) => n.toFixed(2)).join(" ")).join("L") + "Z";
+  let d;
+  switch (shape) {
+    case "square": d = poly([[x - r * 0.85, y - r * 0.85], [x + r * 0.85, y - r * 0.85], [x + r * 0.85, y + r * 0.85], [x - r * 0.85, y + r * 0.85]]); break;
+    case "diamond": d = poly([[x, y - r * 1.15], [x + r * 1.15, y], [x, y + r * 1.15], [x - r * 1.15, y]]); break;
+    case "triangle": d = poly([[x, y - r * 1.15], [x + r * 1.1, y + r * 0.85], [x - r * 1.1, y + r * 0.85]]); break;
+    case "plus": { const a = r * 0.42, b = r * 1.1; d = poly([[x - a, y - b], [x + a, y - b], [x + a, y - a], [x + b, y - a], [x + b, y + a], [x + a, y + a], [x + a, y + b], [x - a, y + b], [x - a, y + a], [x - b, y + a], [x - b, y - a], [x - a, y - a]]); break; }
+    case "star": for (let k = 0; k < 10; k++) { const a = -Math.PI / 2 + (k * Math.PI) / 5, rr = k % 2 ? r * 0.5 : r * 1.2; pts.push([x + Math.cos(a) * rr, y + Math.sin(a) * rr]); } d = poly(pts); break;
+    default: d = `M${x + r} ${y}A${r} ${r} 0 1 1 ${x - r} ${y}A${r} ${r} 0 1 1 ${x + r} ${y}Z`;
+  }
+  p.setAttribute("d", d); p.setAttribute("fill", color);
+  s.append(p);
+  return s;
+}
+function layerIcon(id) {
+  const s = svgEl(30, 24);
+  const add = (tag, attrs) => { const e = document.createElementNS(SVGNS, tag); for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v); s.append(e); return e; };
+  switch (id) {
+    case "green": {
+      const defs = add("defs", {});
+      const g = document.createElementNS(SVGNS, "radialGradient"); g.id = "ig"; defs.append(g);
+      for (const [o, a] of [[0, 0.9], [1, 0.15]]) { const st = document.createElementNS(SVGNS, "stop"); st.setAttribute("offset", o); st.setAttribute("stop-color", "rgb(46,140,74)"); st.setAttribute("stop-opacity", a); g.append(st); }
+      add("rect", { x: 1, y: 1, width: 28, height: 22, rx: 6, fill: "url(#ig)" }); break;
+    }
+    case "noise": {
+      const defs = add("defs", {});
+      const f = document.createElementNS(SVGNS, "filter"); f.id = "ib"; defs.append(f);
+      const b = document.createElementNS(SVGNS, "feGaussianBlur"); b.setAttribute("stdDeviation", "2.4"); f.append(b);
+      add("path", { d: "M2 18 C 10 6, 20 6, 28 16", stroke: "var(--l-noise-3)", "stroke-width": 9, fill: "none", filter: "url(#ib)", opacity: 0.85 });
+      add("path", { d: "M2 18 C 10 6, 20 6, 28 16", stroke: "var(--street-quiet)", "stroke-width": 1.6, fill: "none" }); break;
+    }
+    case "sky":
+      add("path", { d: "M3 6 H27", stroke: "var(--l-sky)", "stroke-width": 1, opacity: 0.35 });
+      add("path", { d: "M3 12 H27", stroke: "var(--l-sky)", "stroke-width": 2.2, opacity: 0.65 });
+      add("path", { d: "M3 19 H27", stroke: "var(--l-sky)", "stroke-width": 4, "stroke-linecap": "round" }); break;
+    case "people":
+      for (const [x, sc] of [[8, 0.85], [15, 1], [22, 0.9]]) {
+        const g = add("g", { transform: `translate(${x - 5 * sc} ${20 - 15 * sc}) scale(${sc})`, fill: "var(--l-people)" });
+        const c1 = document.createElementNS(SVGNS, "circle"); c1.setAttribute("cx", 5); c1.setAttribute("cy", 2.6); c1.setAttribute("r", 2.1); g.append(c1);
+        const p = document.createElementNS(SVGNS, "path"); p.setAttribute("d", "M2.6 6.2 Q5 4.9 7.4 6.2 L7 10 L6.3 14 L5.2 14 L5 11 L4.8 14 L3.7 14 L3 10 Z"); g.append(p);
+      } break;
+    case "transit":
+      add("circle", { cx: 10, cy: 12, r: 6.5, fill: "var(--panel)", stroke: "var(--l-transit)", "stroke-width": 2.2 });
+      add("text", { x: 10, y: 15.6, "text-anchor": "middle", "font-size": 9.5, "font-weight": 700, fill: "var(--l-transit)", "font-family": "Archivo, sans-serif" }).textContent = "M";
+      add("rect", { x: 20, y: 6, width: 5, height: 5, fill: "var(--l-transit)" });
+      add("circle", { cx: 22.5, cy: 17, r: 2.6, fill: "var(--l-transit)" }); break;
+    case "amenities": {
+      const g1 = shapeSvg("circle", 12); g1.setAttribute("x", 1); g1.setAttribute("y", 1); s.append(g1);
+      const g2 = shapeSvg("square", 12); g2.setAttribute("x", 16); g2.setAttribute("y", 2); s.append(g2);
+      const g3 = shapeSvg("plus", 12); g3.setAttribute("x", 9); g3.setAttribute("y", 11); s.append(g3); break;
+    }
+  }
+  return s;
+}
+
+// ---------------------------------------------------------------- panel UI
+function buildCityTabs() {
+  const nav = $("cities");
+  nav.innerHTML = "";
+  for (const c of CITIES) {
+    const b = document.createElement("button");
+    b.role = "tab"; b.id = "tab-" + c.id; b.textContent = c.label;
+    b.setAttribute("aria-selected", String(c.id === state.cityId));
+    b.onclick = () => switchCity(c.id);
+    nav.append(b);
+  }
+}
+function setMode(m) {
+  state.mode = m; store.set("mode", m);
+  $("mode-score").setAttribute("aria-selected", String(m === "score"));
+  $("mode-layers").setAttribute("aria-selected", String(m === "layers"));
+  $("scorepane").hidden = m !== "score";
+  $("layerpane").hidden = m !== "layers";
+  $("modehint").textContent = m === "score"
+    ? "Streets coloured by one score, weighted by what matters to you."
+    : "The evidence behind the scores, as stackable layers. Tick what you want to see.";
+  requestDraw();
+  if (state.selected >= 0) renderCard();
+}
+$("mode-score").onclick = () => setMode("score");
+$("mode-layers").onclick = () => setMode("layers");
+function buildLayerSelect() {
+  const sel = $("layer");
+  sel.innerHTML = "";
+  const og = (label) => { const g = document.createElement("optgroup"); g.label = label; sel.append(g); return g; };
+  const opt = (parent, value, text) => { const o = document.createElement("option"); o.value = value; o.textContent = text; parent.append(o); };
+  opt(sel, "overall", "Overall score (your weights)");
+  const g1 = og("Sub-indices");
+  for (const si of CONFIG.sub_indices) opt(g1, "sub:" + si.id, si.label);
+  for (const si of CONFIG.sub_indices) {
+    const g = og(si.label);
+    for (const m of METRICS.filter((m) => m.sub_index === si.id)) opt(g, "m:" + m.id, m.label);
+    if (si.id === "access") for (const c of CATS) opt(g, "n:" + c.id, "Walk to: " + c.label.toLowerCase());
+  }
+  sel.value = state.layer;
+  if (sel.value !== state.layer) { state.layer = "overall"; sel.value = "overall"; }
+  sel.onchange = () => { state.layer = sel.value; store.set("layer", state.layer); onLayerChange(); };
+}
+function refreshWeightOutputs() {
+  const w = effectiveWeights();
+  $("weights").querySelectorAll("output").forEach((o) => { o.textContent = `${Math.round(w[o.dataset.id] * 100)}%`; });
+}
+function onWeightsChanged() {
+  refreshWeightOutputs();
+  if (state.layer === "overall") { rebuildColorPaths(); requestDraw(); }
+  if (state.selected >= 0) renderCard();
+}
+function buildWeights() {
+  const box = $("weights");
+  box.innerHTML = "";
+  $("slack").textContent = CONFIG.must_have_slack;
+  $("greencap").textContent = Math.round(100 * (CONFIG.sub_indices.find((si) => si.max_share)?.max_share || 1)) + "%";
+  for (const si of CONFIG.sub_indices) {
+    const row = document.createElement("div"); row.className = "wrow";
+    const lab = document.createElement("label"); lab.htmlFor = "w-" + si.id; lab.textContent = si.label;
+    const inp = document.createElement("input"); inp.type = "range"; inp.min = "0"; inp.max = "3"; inp.step = "0.5";
+    inp.id = "w-" + si.id; inp.value = state.weights[si.id];
+    const out = document.createElement("output"); out.htmlFor = inp.id; out.dataset.id = si.id;
+    const must = document.createElement("button"); must.className = "must"; must.textContent = "must";
+    must.title = `Make ${si.label} a must-have: the overall score can't exceed it by more than ${si.slack ?? CONFIG.must_have_slack}`;
+    must.setAttribute("aria-label", `${si.label} is a must-have`);
+    must.setAttribute("aria-pressed", String(!!state.must[si.id]));
+    must.onclick = () => { state.must[si.id] = !state.must[si.id]; store.set("must", state.must); must.setAttribute("aria-pressed", String(state.must[si.id])); onWeightsChanged(); };
+    inp.oninput = () => { state.weights[si.id] = +inp.value; store.set("weights2", state.weights); onWeightsChanged(); };
+    row.append(lab, inp, out, must);
+    box.append(row);
+  }
+  refreshWeightOutputs();
+}
+function layerLegend(id) {
+  const lg = document.createElement("div"); lg.className = "lg";
+  const ramp = (bg, l, r, mid) => {
+    const d = document.createElement("div"); d.className = "ramp"; d.style.background = bg;
+    const e = document.createElement("div"); e.className = "ends";
+    for (const t of [l, mid, r].filter((x) => x !== undefined)) { const sp = document.createElement("span"); sp.textContent = t; e.append(sp); }
+    lg.append(d, e);
+  };
+  const row = (items) => {
+    const r = document.createElement("div"); r.className = "row";
+    for (const [icon, text] of items) { const sp = document.createElement("span"); if (icon) sp.append(icon); sp.append(text); r.append(sp); }
+    lg.append(r);
+  };
+  switch (id) {
+    case "green": ramp("linear-gradient(90deg, rgb(46 140 74 / 0.05), rgb(46 140 74 / 0.85))", "bare or sealed", "fully green"); break;
+    case "noise": ramp("linear-gradient(90deg, var(--l-noise-1), var(--l-noise-2), var(--l-noise-3), var(--l-noise-4))", "55 dB", "70+ dB", "63 dB");
+      { const p = document.createElement("span"); p.textContent = "Estimated from road class (tier C). WHO advises under 53 dB Lden."; lg.append(p); } break;
+    case "sky": {
+      const s = svgEl(140, 14);
+      SKY_BUCKETS.forEach((b, k) => { const l = document.createElementNS(SVGNS, "line"); l.setAttribute("x1", 4 + k * 28); l.setAttribute("x2", 24 + k * 28); l.setAttribute("y1", 7); l.setAttribute("y2", 7); l.setAttribute("stroke", "var(--l-sky)"); l.setAttribute("stroke-width", b.w * 1.6); l.setAttribute("opacity", b.a); l.setAttribute("stroke-linecap", "round"); s.append(l); });
+      lg.append(s);
+      const e = document.createElement("div"); e.className = "ends"; for (const t of ["open", "25°", "45°+"]) { const sp = document.createElement("span"); sp.textContent = t; e.append(sp); } lg.append(e);
+      const p = document.createElement("span"); p.textContent = "Angle of sky hidden by the building opposite, seen from a first-floor window. BRE daylight guidance: under 25°."; lg.append(p);
+      break;
+    }
+    case "people": { const p = document.createElement("span"); p.textContent = "Figures scale with tourist attractions, hotels and sights nearby (Overture places). One figure ≈ 140 places per km² per 100 m of street."; lg.append(p); break; }
+    case "transit": {
+      const ring = svgEl(16, 16); ring.innerHTML = '<circle cx="8" cy="8" r="5.5" fill="var(--panel)" stroke="var(--l-transit)" stroke-width="2"/>';
+      const sq = svgEl(12, 12); sq.innerHTML = '<rect x="2" y="2" width="8" height="8" fill="var(--l-transit)"/>';
+      const dt = svgEl(12, 12); dt.innerHTML = '<circle cx="6" cy="6" r="3.5" fill="var(--l-transit)"/>';
+      row([[ring, "metro, rail, ferry"], [sq, "tram"], [dt, "bus"]]);
+      const p = document.createElement("span"); p.textContent = "From OpenStreetMap stops and lines. Hover a stop for its lines."; lg.append(p);
+      break;
+    }
+    case "amenities": {
+      const cats = document.createElement("div"); cats.className = "cats";
+      for (const c of CATS) {
+        const b = document.createElement("button"); b.setAttribute("aria-pressed", String(state.cats[c.id] !== false));
+        b.append(shapeSvg(SHAPES[c.id], 13), c.label);
+        b.onclick = () => { state.cats[c.id] = state.cats[c.id] === false; store.set("cats", state.cats); b.setAttribute("aria-pressed", String(state.cats[c.id] !== false)); requestDraw(); };
+        cats.append(b);
+      }
+      lg.append(cats);
+      break;
+    }
+  }
+  return lg;
+}
+function buildLayerList() {
+  const box = $("lyrs");
+  box.innerHTML = "";
+  for (const L of LAYERS) {
+    const wrap = document.createElement("div"); wrap.className = "lyr"; wrap.dataset.on = String(!!state.on[L.id]);
+    const lab = document.createElement("label");
+    const ico = document.createElement("span"); ico.className = "ico"; ico.append(layerIcon(L.id));
+    const t = document.createElement("span"); t.className = "t";
+    const b = document.createElement("b"); b.textContent = L.label;
+    const h = document.createElement("span"); h.textContent = L.hint;
+    t.append(b, h);
+    const cb = document.createElement("input"); cb.type = "checkbox"; cb.role = "switch"; cb.checked = !!state.on[L.id];
+    cb.setAttribute("aria-label", L.label);
+    lab.append(ico, t, cb);
+    wrap.append(lab);
+    const lg = layerLegend(L.id);
+    lg.hidden = !state.on[L.id];
+    wrap.append(lg);
+    cb.onchange = () => {
+      state.on[L.id] = cb.checked; store.set("layers", state.on);
+      wrap.dataset.on = String(cb.checked); lg.hidden = !cb.checked;
+      requestDraw();
+    };
+    box.append(wrap);
+  }
+}
+function onLayerChange() {
+  rebuildColorPaths();
+  renderLegend();
+  $("weightsec").hidden = state.layer !== "overall";
+  requestDraw();
+  if (state.selected >= 0) renderCard();
+}
+function renderLegend() {
+  const ticks = $("ticks");
+  ticks.innerHTML = "";
+  let title = "Overall score", l = "worse", r = "better", note = `Weighted mean of the ${CONFIG.sub_indices.length} sub-indices, 0–100, capped by your must-haves.`;
+  if (state.layer === "overall" && !CONFIG.sub_indices.some((si) => (+state.weights[si.id] || 0) > 0)) note = "Every weight is at zero, so there is nothing to score. Raise at least one.";
+  const bandTicks = (pts, unitFmt) => pts.forEach(([x, sc], k) => {
+    const s = document.createElement("span");
+    s.style.left = sc + "%";
+    if (sc <= 2) s.className = "l"; else if (sc >= 98) s.className = "r";
+    s.textContent = unitFmt(x, k);
+    ticks.append(s);
+  });
+  if (state.layer.startsWith("sub:")) {
+    const si = CONFIG.sub_indices.find((s) => s.id === state.layer.slice(4));
+    title = si.label + " score"; note = "Mean of this group's metric scores, 0–100.";
+  } else if (state.layer.startsWith("n:")) {
+    const c = CATS.find((x) => x.id === state.layer.slice(2));
+    title = "Walk to: " + c.label.toLowerCase();
+    bandTicks(c.points, (x) => (x >= 1000 ? (x / 1000).toFixed(1) + " km" : x + " m"));
+    l = "far"; r = "close";
+    note = "Walking distance on the street network to the nearest one (OpenStreetMap plus Overture places). Targets are design values for a 10–15-minute neighbourhood, not a standard.";
+  } else if (state.layer.startsWith("m:")) {
+    const m = MBY[state.layer.slice(2)];
+    title = m.label;
+    if (m.scoring.type === "bands") {
+      const unit = { m: " m", deg: "°", "%": "%", "dB Lden": " dB", tiers: "", ratio: "", AI: "" }[m.unit] ?? "";
+      const pts = m.scoring.points;
+      bandTicks(m.id === "transit_ai" ? pts.filter((_, k) => k % 2 === 0 || k === pts.length - 1) : pts,
+        (x, k) => x + unit + (k === pts.length - 1 && ["W", "major_road_m", "canopy_300"].includes(m.id) ? "+" : ""));
+      note = m.note ? `Scored against published thresholds: ${m.note}.` : "Scored against fixed thresholds.";
+      if (m.id === "W") note += " Streets with nothing opposite within 60 m count as open (100).";
+      if (m.id === "noise_lden") note = "Road-class estimate, not a measured noise map (tier C). Scored against the WHO limit of 53 dB Lden.";
+      if (m.id === "transit_ai") note = "PTAL-style access index: walking time to every stop in reach plus half the assumed headway, summed over lines. Lines come from OpenStreetMap; frequencies are defaults per mode (tier C) until a GTFS timetable is added. " + m.note + ".";
+    } else if (m.scoring.type === "categories") {
+      note = `Mean of the ${CATS.length} walk-distance scores (${CATS.map((c) => c.label.toLowerCase()).join(", ")}). Pick one under Everyday access to see it alone.`;
+    } else {
+      l = m.scoring.higher_is_better ? "lowest in city" : "highest in city";
+      r = m.scoring.higher_is_better ? "highest in city" : "lowest in city";
+      note = "Ranked within this city only, so colours don't compare between cities.";
+    }
+  }
+  $("legendtitle").textContent = title;
+  $("endl").textContent = l; $("endr").textContent = r;
+  $("layernote").textContent = note;
+}
+function renderFacts() {
+  const city = state.city, m = city.manifest || {}, st = city.raw.stats || {};
+  const hs = st.buildings?.height_source_share || {};
+  const real = (hs.height || 0) + (hs.num_floors || 0);
+  const rows = [
+    ["Buildings in city", (st.buildings?.count_in_city || 0).toLocaleString("en")],
+    ["…with a real height or floor count", Math.round(real * 100) + "%"],
+    ["Street pieces scored", (st.pieces_scored || 0).toLocaleString("en")],
+    ["Natural areas ≥ 2 ha found", `${st.nature_areas?.qualifying ?? "–"} (${Math.round(st.nature_areas?.total_ha || 0).toLocaleString("en")} ha)`],
+    ["Tourism places", (st.tourism_places || 0).toLocaleString("en")],
+  ];
+  if (st.transit) rows.push(["Transit lines · stops on map", `${st.transit.routes.toLocaleString("en")} · ${st.transit.stop_symbols.toLocaleString("en")}`]);
+  if (st.amenities) rows.push(["Amenities (OSM + Overture)", `${st.amenities.osm.toLocaleString("en")} + ${st.amenities.overture_added.toLocaleString("en")}`]);
+  if (m.sentinel2) rows.push(["Sentinel-2 summer scenes", `${m.sentinel2.scenes} (${m.sentinel2.first} → ${m.sentinel2.last})`]);
+  if (m.overture_release) rows.push(["Overture release", m.overture_release]);
+  const dl = $("facts"); dl.innerHTML = "";
+  for (const [k, v] of rows) { const dt = document.createElement("dt"); dt.textContent = k; const dd = document.createElement("dd"); dd.textContent = v; dl.append(dt, dd); }
+}
+function renderSources() {
+  const m = state.city.manifest, box = $("srcs");
+  box.innerHTML = "";
+  if (!m) { box.textContent = "No manifest for this city."; return; }
+  const keys = new Set([...Object.keys(m.layers_in_use || {}), ...Object.keys(m.local_candidates || {})]);
+  const alias = (k) => k.replace(/^I0?(\d+)_.*/, "I$1");
+  const cand = {};
+  for (const [k, v] of Object.entries(m.local_candidates || {})) cand[alias(k)] = v;
+  const shown = new Set();
+  for (const k of keys) {
+    const a = alias(k);
+    if (shown.has(a)) continue;
+    shown.add(a);
+    const use = Object.entries(m.layers_in_use || {}).find(([kk]) => alias(kk) === a)?.[1];
+    const c = cand[a];
+    const name = LAYER_NAMES[k] || LAYER_NAMES[Object.keys(LAYER_NAMES).find((n) => alias(n) === a)] || k;
+    const div = document.createElement("div"); div.className = "src";
+    const b = document.createElement("b"); b.textContent = name; div.append(b);
+    const u = document.createElement("span");
+    u.textContent = use ? `In use: ${use.provider.replaceAll("_", " ")} · tier ${use.tier}` : "In use: not part of this build";
+    div.append(u);
+    const f = document.createElement("span");
+    if (c && c.source) f.textContent = `Found locally: ${c.source} · tier ${c.tier ?? "?"} · ${c.licence_class || "licence unclear"}${c.verified === true ? "" : " · unverified"}`;
+    else if (c && c.status === "gap") f.textContent = "Found locally: nothing open (gap)";
+    else f.textContent = "Found locally: not researched";
+    div.append(f);
+    box.append(div);
+  }
+}
+
+// ---------------------------------------------------------------- search
+$("q").addEventListener("input", () => {
+  const q = fold($("q").value.trim());
+  const box = $("suggest");
+  box.innerHTML = "";
+  if (!q || !state.city) { box.hidden = true; return; }
+  const hits = state.city.nameKeys.filter((k) => k.key.includes(q))
+    .sort((a, b) => (a.key.startsWith(q) ? 0 : 1) - (b.key.startsWith(q) ? 0 : 1) || a.name.length - b.name.length).slice(0, 8);
+  if (!hits.length) { const p = document.createElement("p"); p.className = "empty"; p.style.padding = "8px 10px"; p.textContent = "No scored street with that name."; box.append(p); }
+  for (const h of hits) {
+    const b = document.createElement("button");
+    const nm = document.createElement("span"); nm.textContent = h.name;
+    const sm = document.createElement("small"); sm.textContent = `${state.city.byName.get(h.name).length} pieces`;
+    b.append(nm, sm);
+    b.onclick = () => { goToStreet(h.name); box.hidden = true; $("q").value = h.name; };
+    box.append(b);
+  }
+  box.hidden = false;
+});
+$("q").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") { const b = $("suggest").querySelector("button"); if (b) b.click(); }
+  if (e.key === "Escape") $("suggest").hidden = true;
+});
+document.addEventListener("click", (e) => { if (!e.target.closest(".search")) $("suggest").hidden = true; });
+function goToStreet(name) {
+  const city = state.city, idxs = city.byName.get(name);
+  if (!idxs) return;
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const i of idxs) { x0 = Math.min(x0, city.bbox[i * 4]); y0 = Math.min(y0, city.bbox[i * 4 + 1]); x1 = Math.max(x1, city.bbox[i * 4 + 2]); y1 = Math.max(y1, city.bbox[i * 4 + 3]); }
+  state.selectedName = name;
+  fitBounds(x0, y0, x1, y1);
+  const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+  let best = idxs[0], bd = Infinity;
+  for (const i of idxs) { const d = Math.hypot((city.bbox[i * 4] + city.bbox[i * 4 + 2]) / 2 - cx, (city.bbox[i * 4 + 1] + city.bbox[i * 4 + 3]) / 2 - cy); if (d < bd) { bd = d; best = i; } }
+  select(best, true);
+}
+
+// ---------------------------------------------------------------- card + marks
+let draft = { verdict: null };
+function select(i, keepName = false) {
+  state.selected = i;
+  if (!keepName) state.selectedName = null;
+  draft = { verdict: null };
+  renderCard();
+  requestDraw();
+}
+function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; }
+function accessSection(city, i) {
+  const box = el("div", "access");
+  box.append(el("h3", null, "Everyday access"));
+  const ai = rawValue(city, "transit_ai", i);
+  const d = city.details;
+  const ptal = el("div", "ptal");
+  ptal.append(el("span", "band", "PTAL " + (ai === null ? "–" : ptalBand(ai))));
+  const routes = d ? d.transit_routes[i] : null;
+  ptal.append(el("span", null, ai === null ? "no transit data" :
+    `access index ${ai.toFixed(1)}${routes !== null && routes !== -9999 ? ` · ${routes} line${routes === 1 ? "" : "s"} within a short walk` : ""}`));
+  box.append(ptal);
+  if (d && city.layers) {
+    const L = city.layers.stops, names = city.layers.names;
+    const stops = el("div", "stops");
+    for (const [g, label] of [["s", "Tram / bus"], ["r", "Metro / rail"]]) {
+      const k = d[`stop_${g}_i`][i], dist = d[`stop_${g}_d`][i];
+      stops.append(el("span", null, label));
+      stops.append(el("span", null, k >= 0 && dist !== -9999 && dist * 10 < 9999 ? names[L.name[k]] || "unnamed stop" : "none within 5 km"));
+      stops.append(el("span", "d", k >= 0 && dist !== -9999 && dist * 10 < 9999 ? walk(dist * 10) : ""));
+    }
+    box.append(stops);
+  }
+  const needs = el("div", "needs");
+  for (const c of CATS) {
+    const dist = needDist(city, c.id, i);
+    const sc = city.needScores[c.id][i];
+    const ic = el("span"); ic.append(shapeSvg(SHAPES[c.id], 14));
+    needs.append(ic, el("span", null, c.label), el("span", "d", walk(dist)), el("span", "s", Number.isNaN(sc) ? "–" : Math.round(sc)));
+    if (d && city.layers) {
+      const k = d[`need_${c.id}_i`][i];
+      const nm = k >= 0 ? city.layers.names[city.layers.pois.name[k]] : "";
+      needs.append(el("span"), el("span", "nm", nm || ""));
+    }
+  }
+  box.append(needs);
+  box.append(el("span", "d", `${needsWithin(city, i)} of ${CATS.length} within a 10-minute walk (${CONFIG.amenities.reach_m} m). Dashed lines on the map point to each one.`));
+  return box;
+}
+function renderCard() {
+  const card = $("card"), city = state.city, i = state.selected;
+  if (!city || i < 0) { card.hidden = true; return; }
+  card.innerHTML = "";
+  const head = document.createElement("header");
+  const hb = document.createElement("div");
+  const h2 = el("h2", null, streetLabel(city, i));
+  const sub = el("div", "sub", `${city.classes[city.pieces.cls[i]].replace("_", " ")} · piece #${i} · ${city.raw.name}`);
+  hb.append(h2, sub);
+  const x = el("button", "x", "×"); x.setAttribute("aria-label", "Close"); x.onclick = () => select(-1);
+  head.append(hb, x);
+  const w = effectiveWeights();
+  const od = overallDetail(city, i, w);
+  const overall = el("div", "overall");
+  overall.append(el("span", "n", Number.isNaN(od.score) ? "–" : Math.round(od.score)), el("span", "of", "overall, out of 100 with your weights"));
+  if (od.cap) overall.append(el("span", "cap", `Capped by ${od.cap.label} (a must-have): ${Math.round(od.mean)} without the cap.`));
+  const subs = el("div", "subs");
+  for (const si of CONFIG.sub_indices) {
+    const v = city.subScores[si.id][i];
+    const row = el("div", "subrow");
+    const tr = el("div", "track"), fl = el("div", "fill");
+    fl.style.width = Number.isNaN(v) ? "0" : v + "%"; fl.style.background = Number.isNaN(v) ? "transparent" : scoreColor(v);
+    tr.append(fl);
+    row.append(el("span", null, si.label + (state.must[si.id] ? " ·must" : "")), tr, el("span", "v", Number.isNaN(v) ? "–" : Math.round(v)));
+    subs.append(row);
+  }
+  const tbl = el("table", "vals");
+  for (const m of METRICS) {
+    const tr = document.createElement("tr");
+    const sc = city.scores[m.id][i];
+    const d = el("td", "t"); const tv = tierFor(m); const t = el("span", "tier " + tv, tv); t.title = "Data tier " + tv; d.append(t);
+    tr.append(el("td", null, m.label), el("td", "val", fmt(m.id, rawValue(city, m.id, i), city, i)), el("td", "sc", Number.isNaN(sc) ? "–" : Math.round(sc)), d);
+    tbl.append(tr);
+  }
+  card.append(head, overall, subs, accessSection(city, i), tbl, flagForm(city, i));
+  card.hidden = false;
+}
+function flagForm(city, i) {
+  const box = el("div", "flag");
+  box.append(el("h4", null, "Does this match what you know about this street?"));
+  if (!state.db) {
+    box.append(el("p", "msg", state.dbChecked ? (CONFIG.api ? "Marks can't be saved right now. Reload the page to try again." : "Marks can't be saved on the local map. Note what looks wrong, or report it with the Wrong score form at github.com/broAir/green-city-map.") : "Connecting to the review store…"));
+    return box;
+  }
+  const vb = el("div", "verdicts");
+  const save = el("button", "btn", "Save mark"); save.disabled = !draft.verdict;
+  for (const v of VERDICTS) {
+    const b = el("button", null, v.label); b.setAttribute("aria-pressed", String(draft.verdict === v.id));
+    b.onclick = () => { draft.verdict = v.id; vb.querySelectorAll("button").forEach((x) => x.setAttribute("aria-pressed", String(x === b))); save.disabled = false; };
+    vb.append(b);
+  }
+  const aspect = document.createElement("select"); aspect.id = "flag-aspect"; aspect.setAttribute("aria-label", "Which part");
+  const o0 = el("option", null, "About: the overall score"); o0.value = "overall"; aspect.append(o0);
+  for (const si of CONFIG.sub_indices) { const o = el("option", null, "About: " + si.label); o.value = "sub:" + si.id; aspect.append(o); }
+  for (const m of METRICS) { const o = el("option", null, "About: " + m.label); o.value = "m:" + m.id; aspect.append(o); }
+  for (const c of CATS) { const o = el("option", null, "About: walk to " + c.label.toLowerCase()); o.value = "n:" + c.id; aspect.append(o); }
+  for (const L of LAYERS) { const o = el("option", null, "About the layer: " + L.label); o.value = "layer:" + L.id; aspect.append(o); }
+  aspect.value = state.mode === "score" ? state.layer : "overall";
+  const note = document.createElement("textarea"); note.id = "flag-note"; note.placeholder = "What is it really like? e.g. \"tram stop is closed\", \"quiet courtyard side, big plane trees\"";
+  note.setAttribute("aria-label", "Note");
+  note.value = draft.note || "";                    // the card is rebuilt when details load: keep what was typed
+  note.oninput = () => { draft.note = note.value; };
+  const row = el("div", "row");
+  const msg = el("span", "msg");
+  save.onclick = async () => {
+    save.disabled = true; msg.textContent = "Saving…";
+    const [mx, my] = midpoint(city, i);
+    const rec = {
+      city: city.raw.city, build: BUILD, crs: city.raw.crs,
+      x_utm: Math.round(mx + city.raw.origin[0]), y_utm: Math.round(my + city.raw.origin[1]),
+      piece: i, street: streetLabel(city, i), road_class: city.classes[city.pieces.cls[i]],
+      verdict: draft.verdict, aspect: aspect.value, note: note.value.trim().slice(0, 1000), view: state.mode,
+      overall_score: (() => { const o = overallAt(city, i, effectiveWeights()); return Number.isNaN(o) ? null : Math.round(o); })(),
+      sub_scores: Object.fromEntries(CONFIG.sub_indices.map((si) => [si.id, Number.isNaN(city.subScores[si.id][i]) ? null : Math.round(city.subScores[si.id][i])])),
+      created_at: new Date().toISOString(), by: state.userId || null,
+    };
+    try {
+      await state.db.collection("flags").add(rec);
+      msg.textContent = "Saved. It's in your marks list.";
+      note.value = ""; draft.verdict = null; draft.note = "";
+      vb.querySelectorAll("button").forEach((x) => x.setAttribute("aria-pressed", "false"));
+    } catch (e) {
+      msg.textContent = e && e.code === "invalid_argument" ? "You can view this map but not save marks." : "Couldn't save. Try again in a moment.";
+      save.disabled = false;
+    }
+  };
+  row.append(msg, save);
+  box.append(vb, aspect, note, row);
+  return box;
+}
+function renderMarks() {
+  const box = $("marks");
+  $("markcity").textContent = CITIES.find((c) => c.id === state.cityId).label;
+  const mine = state.flags.filter((f) => f.city === state.cityId);
+  box.innerHTML = "";
+  if (!mine.length) {
+    box.append(el("p", "empty", state.db ? "No marks here yet. Click a street on the map, then say whether its score matches what you know."
+      : CONFIG.api ? "Click a street to see its scores." : "Click a street to see its scores. Marks can't be saved on the local map."));
+    return;
+  }
+  const vl = Object.fromEntries(VERDICTS.map((v) => [v.id, v.label]));
+  const aspectLabel = (a) => a === "overall" ? "overall" : a.startsWith("sub:") ? CONFIG.sub_indices.find((s) => "sub:" + s.id === a)?.label
+    : a.startsWith("n:") ? "walk to " + (CATS.find((c) => "n:" + c.id === a)?.label || "").toLowerCase()
+    : a.startsWith("layer:") ? "layer " + (LAYERS.find((l) => "layer:" + l.id === a)?.label || "") : MBY[a.slice(2)]?.label;
+  for (const f of mine.sort((a, b) => (b.created_at || "").localeCompare(a.created_at || ""))) {
+    const item = el("div", "mark"); item.tabIndex = 0;
+    const what = el("span", "what", `${vl[f.verdict] || f.verdict}: ${f.street}`);
+    const del = el("button", "del", "Remove"); del.setAttribute("aria-label", "Remove mark");
+    del.onclick = async (e) => { e.stopPropagation(); try { await state.db.doc("flags/" + f._id).delete(); } catch {} };
+    const meta = el("span", "meta", `${aspectLabel(f.aspect) || f.aspect}${f.note ? " · " + f.note : ""}`);
+    item.append(what, del, meta);
+    const go = () => {
+      const city = state.city;
+      const x = f.x_utm - city.raw.origin[0], y = f.y_utm - city.raw.origin[1];
+      fitBounds(x - 150, y - 150, x + 150, y + 150);
+      // trust the saved piece number only if that piece is still where the mark was made
+      const same = f.piece < city.n && (() => { const [mx, my] = midpoint(city, f.piece); return Math.hypot(mx - x, my - y) < 3; })();
+      select(same ? f.piece : pick(...toScreen(x, y), 30));
+    };
+    item.onclick = go;
+    item.onkeydown = (e) => { if (e.key === "Enter") go(); };
+    box.append(item);
+  }
+}
+// hosted site: the same calls, backed by the site's own API (GET, POST and DELETE on /api/marks)
+function restStore(api) {
+  const listeners = [];
+  const refresh = async () => {
+    try {
+      const r = await fetch(api + "/marks");
+      if (!r.ok) return;
+      const rows = await r.json();
+      for (const fn of listeners) fn({ docs: rows.map((x) => ({ id: x.id, data: () => x })) });
+    } catch {}
+  };
+  return {
+    collection: () => ({
+      add: async (rec) => {
+        const r = await fetch(api + "/marks", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(rec) });
+        if (!r.ok) throw Object.assign(new Error("save failed"), { code: r.status === 403 ? "invalid_argument" : "error" });
+        await refresh();
+      },
+      onSnapshot: (fn) => { listeners.push(fn); refresh(); setInterval(refresh, 30000); },
+    }),
+    doc: (path) => ({ delete: async () => { await fetch(api + "/marks/" + encodeURIComponent(path.split("/")[1]), { method: "DELETE" }); await refresh(); } }),
+  };
+}
+async function connectStore() {
+  try {
+    const db = CONFIG.api ? restStore(CONFIG.api) : await window.claude?.use?.("db");
+    state.dbChecked = true;
+    if (!db) { renderMarks(); if (state.selected >= 0) renderCard(); return; }
+    state.db = db;
+    if (!CONFIG.api) try { const user = await window.claude.use("user"); if (user && user.id) state.userId = await user.id(); } catch {}
+    db.collection("flags").onSnapshot((snap) => {
+      state.flags = snap.docs.map((d) => ({ _id: d.id, ...d.data() }));
+      renderMarks(); requestDraw();
+    }, () => {});
+    renderMarks();
+    if (state.selected >= 0) renderCard();
+  } catch {
+    state.dbChecked = true;
+    renderMarks();
+  }
+}
+
+// ---------------------------------------------------------------- city switching
+async function switchCity(id) {
+  state.cityId = id; store.set("city", id);
+  buildCityTabs();
+  state.selected = -1; state.selectedName = null; state.hover = -1;
+  state.city = null;               // nothing clickable until the new city is ready, so marks can't land in the old one
+  requestDraw();
+  $("card").hidden = true; $("q").value = "";
+  const label = CITIES.find((c) => c.id === id).label;
+  const st = $("status");
+  st.hidden = false; st.textContent = `Loading ${label}…`;
+  try {
+    const city = await loadCity(id);
+    if (state.cityId !== id) return;
+    state.city = city;
+    st.hidden = true;
+    rebuildColorPaths();
+    renderLegend(); renderFacts(); renderSources(); renderMarks();
+    fit();
+  } catch (e) {
+    st.textContent = `Couldn't load the ${label} data. Reload the page to try again.`;
+    console.error(e);
+  }
+}
+
+// ---------------------------------------------------------------- boot
+function onResize() { dims = size(); sprites = {}; requestDraw(); }
+new ResizeObserver(onResize).observe(canvas);
+const mq = window.matchMedia("(prefers-color-scheme: dark)");
+const retheme = () => { readTokens(); rebuildColorPaths(); requestDraw(); if (state.selected >= 0) renderCard(); };
+mq.addEventListener?.("change", retheme);
+new MutationObserver(retheme).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+$("buildv").textContent = BUILD;
+readTokens();
+dims = size();
+async function boot() {
+  if (CONFIG.api) {
+    try { CITIES = (await (await fetch(CONFIG.api + "/cities")).json()).map((c) => ({ id: c.id, label: c.name })); } catch {}
+    if (!CITIES.length) { $("status").textContent = "No cities are published yet."; return; }
+  }
+  const wanted = new URLSearchParams(location.search).get("city");
+  if (wanted && CITIES.some((c) => c.id === wanted)) state.cityId = wanted;
+  if (!CITIES.some((c) => c.id === state.cityId)) state.cityId = CITIES[0].id;
+  buildCityTabs(); buildLayerSelect(); buildWeights(); buildLayerList();
+  $("weightsec").hidden = state.layer !== "overall";
+  setMode(state.mode);
+  switchCity(state.cityId);
+  connectStore();
+}
+boot();
+</script>

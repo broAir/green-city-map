@@ -1,0 +1,226 @@
+# City source manifest, research-phase candidates (schema: spec/input-layers.md §5)
+# Status: candidates only. Nothing downloaded or computed; coverage/sanity checks are pending (Step 3.4).
+city: dnipro
+country: UA
+languages: [uk, ru]
+boundary: {source: "OSM admin boundary (name:en=Dnipro)", id: null, note: "not resolved; Overpass returned 504/500 during research"}
+researched_at: 2026-10-09
+researcher: "skill research phase v0 (agent)"
+skill_version: 0.1.0
+verification_legend:
+  "true": "endpoint probed this session and responded with the expected content"
+  "partial": "catalogue/metadata verified, but the data endpoint itself was not probed or did not respond"
+  "false": "not verified; taken from search results or prior knowledge"
+jurisdiction_context: >
+  Ukraine is outside the EU and the EEA39 area, so there is no END noise-mapping obligation and no
+  Copernicus HRL or Urban Atlas coverage. The last census was 2001. Since 2022, martial-law security
+  measures have restricted access to parts of the state geospatial registers. No Dnipro city geoportal
+  answered (gis., geoportal., map., opendata.dniprorada.gov.ua: no response; dniprorada.gov.ua → 302 /uk).
+  Dnipro City Council publishes many datasets on data.gov.ua under CC BY 4.0, but none found carry
+  building, noise, tree-inventory or green-area geometry. Wartime population displacement makes every
+  pre-2022 population grid unreliable. This city is a priority for scan/capture campaigns (§4 step 6).
+
+layers:
+
+  I02_building_heights:
+    status: gap
+    tier: C
+    best_available:
+      tier: C
+      source_name: "OSM building:levels × 3 m (height ladder step 7)"
+      licence: {id: ODbL-1.0, class: shareable, attribution: "© OpenStreetMap contributors"}
+      coverage: null
+      coverage_note: "share of Dnipro buildings with building:levels not measured (Overpass 504/500); measure in Step 1"
+      verified: false
+    recommended_next: "imagery floor-counting scan (ladder step 8, tier S) on Panoramax/Mapillary coverage"
+    considered:
+      - source_name: "3D-GloBFP Europe (Che et al. 2024), ML per-footprint heights"
+        tier: B
+        decision: candidate-fallback
+        reason: "CC BY 4.0 (Zenodo concept 10.5281/zenodo.11391076, v2025); RMSE 1.9–14.6 m by region. Ukraine inclusion NOT verified (needs the world_grid.zip tile index). If it covers Dnipro it beats OSM levels; run the §4 sanity check vs OSM"
+        url: https://doi.org/10.5281/zenodo.11391076
+        verified: partial
+      - {source_name: "GlobalBuildingAtlas heights", tier: B, decision: local-only, reason: "CC BY-NC; best global per-building heights, allowed only for a private map", verified: false}
+      - {source_name: "Overture buildings height/num_floors", tier: B, decision: candidate-fallback, reason: "sparse in Europe; measure share in Step 1", verified: false}
+      - {source_name: "EUBUCCO", tier: B, decision: rejected, reason: "covers EU-27 + UK, NO, CH only; not Ukraine", verified: false}
+      - {source_name: "Google Open Buildings 2.5D Temporal", tier: B, decision: never, reason: "a Google dataset, which the skill never uses (spec/input-layers.md §3); it doesn't cover Ukraine either", verified: false}
+      - {source_name: "Microsoft Global ML Building Footprints", tier: B, decision: rejected, reason: "dataset-links.csv (2026-02 release) has no 'Ukraine' rows", url: "https://minedbuildings.z5.web.core.windows.net/global-buildings/dataset-links.csv", verified: true}
+      - {source_name: "Dnipro city geoportal / містобудівний кадастр", tier: A, decision: rejected, reason: "no public endpoint found; candidate hosts did not respond", verified: true}
+      - {source_name: "data.gov.ua 'Дніпро будівлі'", tier: A, decision: rejected, reason: "only accessibility-of-buildings tables (CC BY 4.0), no geometry/heights", verified: true}
+      - {source_name: "GHSL building height 100 m (2018)", tier: C, decision: last-resort, reason: "cell-level only", verified: false}
+
+  I10_noise:
+    status: gap
+    tier: C
+    best_available:
+      tier: C
+      source_name: "NoiseModelling on OSM I01/I02/I04 with default flows, or road-class × distance estimate"
+      verified: false
+    considered:
+      - {source_name: "Official Dnipro noise map (карта шуму / акустична карта Дніпро)", tier: A, decision: rejected, reason: "none found: web search (uk) and data.gov.ua 'Дніпро шум' → 0 results. Only academic method papers and news on noise inspections", verified: true}
+      - {source_name: "NoiseCapture crowd measurements", tier: C, decision: validation-only, reason: "ODbL; use to sanity-check the model; Dnipro density not checked", url: "https://noise-planet.org/noisecapture_data.html", verified: false}
+
+  I06_tree_points:
+    status: gap
+    tier: C
+    best_available:
+      tier: C
+      source_name: "OSM natural=tree"
+      licence: {id: ODbL-1.0, class: shareable}
+      coverage: null
+      verified: false
+    considered:
+      - source_name: "Dnipro City Council, 'Дані про зелені насадження що підлягають видаленню відповідно до виданих актів обстеження'"
+        tier: C
+        decision: rejected
+        reason: "CC BY 4.0 on data.gov.ua (updated 2025-09-09), but it lists trees approved for REMOVAL under inspection acts, not an inventory"
+        url: https://data.gov.ua/dataset/29d5e103-6132-4a9e-8066-05278f6251f4
+        verified: true
+      - {source_name: "Municipal tree inventory (інвентаризація зелених насаджень Дніпро)", tier: A, decision: rejected, reason: "no open register found; only 2016-era park-inventory research papers (Dubinina and Pysarzhevskoho parks)", verified: true}
+
+  I05_canopy_height:
+    status: gap
+    tier: B
+    best_available:
+      tier: B
+      source_name: "Meta/WRI CHMv2 1 m canopy height (global fallback)"
+      licence: {id: CC-BY-4.0, class: shareable}
+      notes: "no urban validation; fall back to ESA WorldCover tree class 10 m (C)"
+      verified: false
+    considered:
+      - {source_name: "National/municipal LiDAR", tier: A, decision: rejected, reason: "no open Ukrainian LiDAR programme found", verified: false}
+      - {source_name: "Copernicus HRL Tree Cover Density", tier: B, decision: rejected, reason: "EEA39 extent excludes Ukraine", verified: false}
+
+  I08_sealed_surface:
+    status: gap
+    tier: C
+    best_available:
+      tier: C
+      source_name: "ESA WorldCover built-up class, 10 m (global fallback)"
+      licence: {id: CC-BY-4.0, class: shareable}
+      verified: false
+    considered:
+      - {source_name: "Copernicus HRL Imperviousness", tier: B, decision: rejected, reason: "EEA39 extent excludes Ukraine", verified: false}
+
+  I07_green_areas:
+    status: gap
+    tier: C
+    best_available:
+      tier: C
+      source_name: "OSM leisure/landuse/natural green tags + ESA WorldCover"
+      licence: {id: "ODbL-1.0 / CC-BY-4.0", class: shareable}
+      verified: false
+    considered:
+      - {source_name: "Dnipro municipal parks/squares register on data.gov.ua", tier: A, decision: rejected, reason: "search 'Дніпро парки сквери' → 9 results, none from Дніпровська міська рада with geometry", verified: true}
+      - {source_name: "Copernicus Urban Atlas 2021", tier: B, decision: rejected, reason: "covers EEA38+UK FUAs; not Ukraine", verified: false}
+
+  I12_population:
+    best_candidate:
+      tier: B
+      source_name: "Kontur Population: Ukraine, 400 m H3 hexagons (2023-11-01)"
+      url: https://data.humdata.org/dataset/kontur-population-ukraine
+      access: {method: download, endpoint: "https://geodata-eu-central-1-kontur-public.s3.amazonaws.com/kontur_datasets/kontur_population_UA_20231101.gpkg.gz", registration: false}
+      licence: {id: CC-BY-4.0, class: shareable, attribution: "Kontur Population (via HDX)"}
+      vintage: "2023-11-01 (newest found; a 2022-06-30 edition also exists)"
+      resolution: "H3 res 8 (~400 m), coarser than the ≤100 m contract"
+      coverage: 1.0
+      verified: true
+      verification: "HDX package_show read; gpkg.gz HEAD 200 (22.2 MB, Last-Modified 2023-10-31)"
+      notes: "Only post-invasion vintage found. 100 m grids (GHS-POP, WorldPop 2020) are finer but pre-war; displacement since 2022 makes them unreliable. Treat M13/M14 as low-confidence"
+    considered:
+      - {source_name: "GHS-POP 100 m (2025 epoch, modelled)", tier: B, decision: alternate, reason: "finer, but modelled from pre-war inputs", verified: false}
+      - {source_name: "WorldPop Ukraine 100 m", tier: B, decision: alternate, reason: "HDX licence 'hdx-other'; years 2000–2020 (pre-war)", url: "https://data.humdata.org/dataset/worldpop-population-density-for-ukraine", verified: true}
+      - {source_name: "Ukrainian census", tier: A, decision: rejected, reason: "last census 2001", verified: false}
+
+  I13_short_term_rentals:
+    status: gap
+    tier: null
+    fallback: "OSM tourism=apartment/guest_house + I14 attractors (C)"
+    considered:
+      - {source_name: "Inside Airbnb", tier: B, decision: rejected, reason: "no Dnipro or Ukraine snapshot on get-the-data page (2026-10-09)", verified: true}
+      - {source_name: "Official STR registry", tier: A, decision: rejected, reason: "no Ukrainian STR registry found; EU STR Regulation does not apply", verified: false}
+
+  I19_transit:
+    status: gap
+    tier: C
+    baseline: {source_name: "OSM via Overpass: public_transport stops/platforms + route relations; frequency = default headway per mode", tier: C, licence: {id: ODbL-1.0, class: shareable}}
+    best_available:
+      tier: C
+      source_name: "OSM baseline, with stop locations cross-checked against the Dnipro City Council stop register (2020)"
+      notes: >
+        No GTFS exists for Dnipro in the Mobility Database (UA feeds: Lviv, Uzhhorod, Stryi, Bucha, Odesa,
+        Uman, Khmelnytskyi, Kyiv), in the Transitland atlas (UA: kpt.kyiv.ua, lvivavtodor only) or on
+        data.gov.ua. Dnipro City Council publishes only pre-war, non-GTFS material (CC BY 4.0): stop
+        locations (2020), tram/trolleybus/bus timetables as XLS/7z (2019–2021). Network changes since 2022
+        make these stale. Frequencies stay at mode defaults (tier C).
+    complements:
+      - source_name: "Dnipro City Council: 'Дані про місце розміщення зупинок міського електро- та автомобільного транспорту' (surface stops + metro stations)"
+        tier: B
+        url: https://data.gov.ua/dataset/3b014cfe-0a97-4280-9dc7-36eea2474447
+        access: {method: download, endpoint: "https://data.gov.ua/dataset/667f8d15-7cc9-4310-98a8-4fc853cedddd/resource/07cc0b98-ceb6-46a7-960a-c4e5c596f262/download/", alt_endpoints: ["https://data.gov.ua/dataset/667f8d15-7cc9-4310-98a8-4fc853cedddd/resource/73469765-298d-402c-998c-8b3b176017bb/download/ (metro stations, 29,088 bytes)"], registration: false, format: XLSX}
+        modes: [bus, tram, trolleybus, metro]
+        licence: {id: CC-BY-4.0, class: shareable, attribution: "Дніпровська міська рада", evidence: "data.gov.ua package license_id cc-by"}
+        vintage: "2020-09-22 (pre-war)"
+        file_size_bytes: 108561
+        use: "stop-location QA for OSM; not a timetable"
+        verified: true
+        verification: "HEAD 200, Content-Length 108,561, Last-Modified 2020-09-22; metro file 29,088 bytes, 2020-09-21"
+    considered:
+      - source_name: "Dnipro City Council 'Розклад руху громадського транспорту' (tram/trolleybus/bus timetables, XLS/7z)"
+        tier: C
+        decision: rejected
+        reason: "CC BY 4.0, but not GTFS (spreadsheets per route) and last updated 2021-02-28 (pre-war). Could seed per-route headways only after manual parsing; network changed since 2022"
+        url: https://data.gov.ua/dataset/34b91f0c-b584-4394-a7d4-1ac0517c3955
+        verified: true
+      - source_name: "Dnipro City Council GPS monitoring APIs ('real-transport-dnipro': api-t900.icity.com.ua/api/gps_data/ for buses; 46.4.68.233:23450/api/gps-data for trams/trolleybuses)"
+        tier: C
+        decision: rejected
+        reason: >
+          Both endpoints still answer with live JSON (2026-10-10: 429 buses; 50 trams + 41 trolleybuses, with route
+          numbers), but the coordinates are not WGS84 (lat ≈ 417, lon ≈ 352), apparently deliberately altered under
+          martial law. Do not try to reverse the transform. Vehicle counts per route number (positions unused) could at
+          most calibrate default headways
+        url: https://data.gov.ua/dataset/real-transport-dnipro
+        licence: {id: CC-BY-4.0, class: shareable}
+        verified: true
+      - {source_name: "EasyWay (eway.in.ua) Dnipro routes and schedules", tier: B, decision: rejected, reason: "proprietary; no open export or licence. An EasyWay presentation says Dnipro GPS data belongs to a private company and is not open", verified: false}
+      - {source_name: "Mobility Database / Transitland atlas", tier: A, decision: rejected, reason: "no Dnipro feed (catalogue CSV and atlas file list checked 2026-10-10)", verified: true}
+      - {source_name: "Dnipro Metro (KP Dniprovskyi metropoliten) GTFS", tier: A, decision: rejected, reason: "none published; the single line has 6 stations, so use OSM stations + a default headway", verified: false}
+
+  I20_amenities:
+    status: baseline_only
+    tier: B
+    baseline:
+      source_name: "Overture places (categories) + OSM amenity/shop/leisure/healthcare tags"
+      tier: B
+      licence: {id: "CDLA-Permissive-2.0 (Overture places; Foursquare part Apache-2.0, AllThePlaces part CC0-1.0) / ODbL-1.0 (OSM)", class: shareable}
+      licence_evidence: "docs.overturemaps.org/attribution, Places section (read 2026-10-10)"
+    notes: >
+      No current official open facility register with coordinates was found. Dnipro City Council publishes
+      1,364 datasets on data.gov.ua (CC BY 4.0), but its school and kindergarten lists were last updated
+      2021-05-05, before the full-scale invasion. Wartime closures, relocations and damage since 2022 make
+      them unreliable, and the baseline (Overture/OSM) is also only as current as its contributors. Validate
+      open/closed status in scan mode before trusting either.
+    considered:
+      - source_name: "Дніпровська міська рада: 'Перелік комунальних закладів загальної середньої освіти м. Дніпра' + '... закладів дошкільної освіти ...' (data.gov.ua)"
+        tier: A
+        categories: [schools, kindergartens]
+        decision: alternate
+        reason: "CC BY 4.0, official address lists of municipal schools and kindergartens (Organizations.xlsx 43 KB / 47 KB), but last updated 2021-05-05 (pre-2022), with no coordinates. Use only to cross-check the baseline"
+        url: https://data.gov.ua/dataset/86eae90f-d892-4f27-b297-0362ccfd9501/resource/f3a520e2-1e06-46b3-999b-18c09f6ce9d5/download/organizations.xlsx
+        alt_url: https://data.gov.ua/dataset/0e831afd-ead6-4168-8ec3-3f7fa87cf79a/resource/2a8849d3-97f0-42d7-b244-44d3619d860a/download/organizations.xlsx
+        licence_class: shareable
+        verified: true
+      - source_name: "ЄДЕБО Реєстр суб'єктів освітньої діяльності, open data (registry.edbo.gov.ua/opendata): заклади загальної середньої освіти"
+        tier: A
+        categories: [schools]
+        decision: unverified
+        reason: "National and current (page says 'Дані оновлено 10.10.2026'). The legacy JSON endpoints (/api/institutions?ut=..&lc=..&exp=json) return 404 after the site's Next.js redesign; the new export URL was not found. Licence presumed open-data (Ukrainian open-data rules, attribution), not confirmed"
+        url: https://registry.edbo.gov.ua/opendata/
+        verified: partial
+      - source_name: "Держлікслужба licence registers on data.gov.ua (pharmacies)"
+        tier: A
+        categories: [pharmacies]
+        decision: rejected
+        reason: "Only the narcotics-licence register is published (dataset 78786206-1186-4993-9d7e-ce7deedbdb6a, CC BY, 2026-10-05); no retail pharmacy list found"
+        verified: true

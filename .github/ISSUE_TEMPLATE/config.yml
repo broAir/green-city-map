@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: How to add a city
+    url: https://github.com/broAir/green-city-map/blob/HEAD/CONTRIBUTING.md#add-a-city
+    about: Run the skill with an AI agent, then send the city to the website. Bundles attached to issues are not used.
+  - name: How a city is sent to the website
+    url: https://github.com/broAir/green-city-map/blob/HEAD/docs/UPLOAD.md
+    about: The upload protocol, the checks every bundle must pass, and what the website keeps.

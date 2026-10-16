@@ -1,0 +1,386 @@
+# City source manifest, research-phase candidates (schema: spec/input-layers.md §5)
+# Status: candidates only. Nothing downloaded or computed; coverage/sanity checks are pending (Step 3.4).
+city: lisboa
+country: PT
+languages: [pt]
+boundary: {source: "CML Base_LimiteConcelho (ArcGIS) or CAOP (DGT) or OSM admin boundary", id: null, note: "not resolved in this research pass"}
+researched_at: 2026-10-09
+researcher: "skill research phase v0 (agent)"
+skill_version: 0.1.0
+verification_legend:
+  "true": "endpoint probed this session and responded with the expected content"
+  "partial": "catalogue/metadata verified, but the data endpoint itself was not probed or did not respond"
+  "false": "not verified; taken from search results or prior knowledge"
+access_context: >
+  dados.cm-lisboa.pt and geodados.cm-lisboa.pt sit behind a Cloudflare JS challenge (HTTP 403,
+  cf-mitigated: challenge) for scripted clients. CML republishes many layers on ArcGIS Online
+  (services.arcgis.com/1dSrzEWVQn5kHHyK), which is scriptable, and the national portal dados.gov.pt
+  API mirrors CML metadata with licences.
+
+layers:
+
+  I02_building_heights:
+    best_candidate:
+      tier: A
+      source_name: "DGT LiDAR 2024 (Portugal continental), MDS + MDT 50 cm → median(DSM − DTM) per footprint"
+      url: https://cdd.dgterritorio.gov.pt
+      access:
+        method: download
+        endpoint: "https://cdd.dgterritorio.gov.pt/dgt-fe/mapa?collection=LAZ"
+        collections: [MDS-50cm, MDT-50cm, MDS-2m, MDT-2m, LAZ]
+        registration: true
+        registration_note: "free CDD account with e-mail confirmation; access immediate (GMT.jl DGT LiDAR tutorial)"
+      licence:
+        id: unknown
+        class: local-only
+        attribution: "Direção-Geral do Território (DGT), LiDAR 2024"
+        evidence: "No licence text found for the 2024 LiDAR products. DGT's sibling products are CC BY on dados.gov.pt (COSc 2024/2025) and Azores LiDAR is CC BY, and SMOS says 'política de dados abertos'. Likely CC BY 4.0; confirm, then upgrade to shareable"
+      vintage: "flown 2024"
+      resolution: "0.5 m grids; point cloud ≈10 pts/m², LAS 1.4 PDRF 8, 9 thematic classes"
+      coverage: 1.0
+      coverage_note: "mainland Portugal; assumed, not measured"
+      derivation: "median(MDS − MDT) per I01 footprint (CML 'Edificado' or OSM/Overture)"
+      verified: partial
+      verification: "dados.gov.pt lists DGT LiDAR collections pointing to the cdd.dgterritorio.gov.pt map; CDD login flow not exercised"
+    considered:
+      - source_name: "DGT Mapa de Construções LiDAR 2024 (SMOS, experimental)"
+        tier: B
+        decision: rejected
+        reason: "Vector polygons of LiDAR class 6 'Construções'. The description gives no height attribute, and adjacent buildings < ~1 m apart are merged into one polygon, so DGT itself says not to use it for individual buildings. Licence 'notspecified'. Useful as an I01 completeness cross-check"
+        url: https://geo2.dgterritorio.gov.pt/lidar/MConst_LiDAR2024_PTcont-gpkg.zip
+        verified: true   # HEAD 200, 751 MB, Last-Modified 2026-09-16
+      - source_name: "CML Edificado (Edificado_e_Vias layer 0)"
+        tier: A
+        decision: complement
+        reason: "61,536 municipal footprints (COD_SIG, IDTIPO, NPRINCIP, MORADA); no height/floor fields. Use as I01 for the DSM−DTM derivation. Licence not checked"
+        url: https://services.arcgis.com/1dSrzEWVQn5kHHyK/arcgis/rest/services/Edificado_e_Vias/FeatureServer/0
+        verified: true
+      - {source_name: "3D-GloBFP Europe (Che et al. 2024)", tier: B, decision: fallback, reason: "CC BY 4.0 (Zenodo concept 11391076); ML heights, RMSE 1.9–14.6 m", url: "https://doi.org/10.5281/zenodo.11391076", verified: true}
+      - {source_name: "EUBUCCO", tier: B, decision: fallback, reason: "ODbL; if DGT licence stays unclear", verified: false}
+      - {source_name: "GlobalBuildingAtlas heights", tier: B, decision: local-only, reason: "CC BY-NC", verified: false}
+      - {source_name: "CML 3D city model (Lisboa 3D)", tier: A, decision: unverified, reason: "not found in CML ArcGIS Online services list or dados.gov.pt; may exist as a scene layer", verified: false}
+
+  I10_noise:
+    best_candidate:
+      tier: A
+      source_name: "CML Mapa de Ruído Global 2020 (Lden and Ln), shapefile"
+      url: https://dados.gov.pt/pt/datasets/mapa-do-ruido/
+      access:
+        method: download
+        endpoint: "https://dados.cm-lisboa.pt/dataset/78c049d4-be97-474a-9c28-ef34ed500c25/resource/14e10f2a-43d7-4775-aca4-2f01a5ac76a0/download/ruidoglobal2020.7z"
+        registration: false
+        access_note: "Cloudflare challenge (403) blocks scripted download; needs a browser download or a mirror. The dados.gov.pt record holds the metadata"
+      licence:
+        id: CC-BY-4.0
+        class: shareable
+        attribution: "Câmara Municipal de Lisboa, Mapa de Ruído 2020"
+        evidence: "dados.gov.pt API dataset 'mapa-do-ruido' license = cc-by"
+      vintage: "2020 (PDFs dated 2021-04-26)"
+      resolution: "contour polygons (shapefile, 7z); 'Global' = all sources combined. Per-source (road/rail/air) split not confirmed"
+      coverage: null
+      derivation: "facade band from Lden/Ln contour polygons"
+      verified: partial
+      verification: "dados.gov.pt metadata and resource list read; file URL answers 403 Cloudflare challenge to curl"
+    considered:
+      - {source_name: "APA (Agência Portuguesa do Ambiente) END agglomeration maps for Lisboa", tier: A, decision: unverified, reason: "per-source END deliverables may exist at APA/SNIAmb; not checked", verified: false}
+      - {source_name: "EEA END noise contours", tier: A, decision: local-only, reason: "EEA terms restrict reuse", verified: false}
+
+  I06_tree_points:
+    best_candidate:
+      tier: A
+      source_name: "CML Arvoredo (municipal tree register), Ambiente_DMEVAE layer 0"
+      url: https://dados.gov.pt/pt/datasets/arvoredo/
+      access: {method: api, endpoint: "https://services.arcgis.com/1dSrzEWVQn5kHHyK/arcgis/rest/services/Ambiente_DMEVAE/FeatureServer/0", registration: false}
+      licence:
+        id: CC0-1.0
+        class: shareable
+        attribution: "Câmara Municipal de Lisboa"
+        evidence: "dados.gov.pt API dataset 'arvoredo' license = cc-zero (Município de Lisboa)"
+      vintage: "updated 2026-05-05 (dados.gov.pt last_modified)"
+      resolution: "point per tree; species (ESPECIE_VA, NOME_VULGA), PAP (perimeter, often empty), location type, manager (CML/JF)"
+      coverage: null
+      coverage_note: "80,575 records; public trees (street 'Via pública' and municipal green spaces). Private trees absent"
+      verified: true
+      verification: "FeatureServer query returnCountOnly → 80575; sample record read"
+    considered:
+      - {source_name: "OSM natural=tree", tier: C, decision: rejected, reason: "superseded", verified: false}
+
+  I05_canopy_height:
+    best_candidate:
+      tier: A
+      source_name: "DGT LiDAR 2024 point cloud / MDS−MDT 50 cm → canopy height model"
+      url: https://cdd.dgterritorio.gov.pt
+      access: {method: download, endpoint: "https://cdd.dgterritorio.gov.pt/dgt-fe/mapa?collection=LAZ", registration: true}
+      licence:
+        id: unknown
+        class: local-only
+        attribution: "Direção-Geral do Território (DGT)"
+        evidence: "see I02; likely CC BY 4.0, unconfirmed"
+      vintage: "2024"
+      resolution: "0.5 m"
+      coverage: 1.0
+      derivation: "CHM = MDS − MDT masked to LiDAR vegetation classes (point cloud has 9 thematic classes) or exclude buildings + NDVI"
+      verified: partial
+      verification: "see I02"
+    considered:
+      - {source_name: "Meta/WRI CHMv2 1 m", tier: B, decision: fallback, reason: "shareable (CC BY 4.0) until DGT licence is confirmed", verified: false}
+      - {source_name: "Copernicus HRL Tree Cover Density 10 m", tier: B, decision: rejected, reason: "coarser", verified: false}
+
+  I08_sealed_surface:
+    best_candidate:
+      tier: B
+      source_name: "Copernicus HRL Imperviousness Density 10 m (2021; 2024 release announced)"
+      url: https://land.copernicus.eu/en/products/high-resolution-layer-imperviousness
+      access:
+        method: download
+        endpoint: https://land.copernicus.eu/en/products/high-resolution-layer-imperviousness/imperviousness-density-2021
+        registration: true
+        registration_note: "EU Login for CLMS download (inferred); anonymous EEA ImageServer only for 2018"
+      licence:
+        id: "Copernicus data policy (Reg. (EU) 1159/2013)"
+        class: shareable
+        attribution: "© European Union, Copernicus Land Monitoring Service, EEA"
+      vintage: "2021"
+      resolution: "10 m, 0–100%"
+      coverage: 1.0
+      verified: partial
+      verification: "product page 200; login requirement not directly confirmed"
+    considered:
+      - source_name: "DGT Carta de Ocupação do Solo Conjuntural (COSc) 2025, 10 m"
+        tier: B
+        decision: complement
+        reason: "CC BY, annual, national; 'artificial' class is a binary sealed proxy. Direct zip, no login"
+        url: https://geo2.dgterritorio.gov.pt/cosc/COSc2025.zip
+        verified: true   # HEAD 200, 190.7 MB
+      - {source_name: "DGT COS 2023 (vector, 1 ha MMU)", tier: C, decision: rejected, reason: "too coarse for 0–100% sealing", verified: false}
+      - {source_name: "CML paving / pavimentos layer", tier: A, decision: rejected, reason: "none found in CML ArcGIS services list", verified: true}
+
+  I07_green_areas:
+    best_candidate:
+      tier: A
+      source_name: "CML Espaços Verdes (municipal green-space register), Ambiente_DMEVAE layer 4"
+      url: https://dados.gov.pt/pt/datasets/espacos-verdes-2/
+      access: {method: api, endpoint: "https://services.arcgis.com/1dSrzEWVQn5kHHyK/arcgis/rest/services/Ambiente_DMEVAE/FeatureServer/4", registration: false}
+      licence:
+        id: CC0-1.0
+        class: shareable
+        attribution: "Câmara Municipal de Lisboa"
+        evidence: "dados.gov.pt API 'espacos-verdes-2' license = cc-zero"
+      vintage: "2026-05-05"
+      resolution: "3,547 polygons; NOME, GESTAO, AREA_M2, MANUT_NIVEL, FREGUESIA"
+      coverage: null
+      derivation: "municipal-managed green spaces, so access = public; private/institutional green comes from OSM / Urban Atlas"
+      verified: true
+      verification: "FeatureServer query count 3547; fields read"
+    considered:
+      - {source_name: "CML 'Grandes parques e Jardins de Lisboa' (Cartografia_Base layer 4)", tier: A, decision: complement, reason: "CC0 (dados.gov.pt 'espacos-verdes'); large parks only", url: "https://services.arcgis.com/1dSrzEWVQn5kHHyK/arcgis/rest/services/Cartografia_Base/FeatureServer/4", verified: true}
+      - {source_name: "CML Corredor Verde, Hortas Urbanas (Ambiente_DMEVAE layers 2, 3)", tier: A, decision: complement, reason: "add to green set", verified: true}
+      - {source_name: "Copernicus Urban Atlas 2021", tier: B, decision: complement, reason: "access field for non-municipal green; EU Login", verified: false}
+
+  I12_population:
+    best_candidate:
+      tier: A
+      source_name: "INE BGRI 2021 (census subsections) + Censos 2021 counts per subsecção"
+      url: https://dados.gov.pt/pt/datasets/base-geografica-de-referenciacao-da-informacao-2021/
+      access:
+        method: wfs
+        endpoint: "https://inspire.ine.pt/geoserver/BGRI2021/wfs?SERVICE=WFS&REQUEST=GetCapabilities&VERSION=2.0.0"
+        layers: [BGRI2021:BGRI21_CONT, BGRI2021:BGRI21_MAD, BGRI2021:BGRI21_AC25, BGRI2021:BGRI21_AC26]
+        registration: false
+      licence:
+        id: CC-BY-4.0
+        class: shareable
+        attribution: "Instituto Nacional de Estatística (INE), BGRI 2021 / Censos 2021"
+        evidence: "dados.gov.pt API license = cc-by (INE)"
+      vintage: "2021"
+      resolution: "census subsection polygons (city-block scale)"
+      coverage: 1.0
+      derivation: "join resident counts by SUBSECCAO code. The WFS exposes geometry + codes only; counts come from INE's Censos 2021 subsection tables (download location not verified this session)"
+      verified: partial
+      verification: "WFS GetCapabilities + GetFeature(COUNT=1) returned BGRI codes; population attribute absent"
+    considered:
+      - {source_name: "INE / Eurostat Census 2021 1 km grid", tier: B, decision: rejected, reason: "coarser", verified: false}
+      - {source_name: "GHS-POP / WorldPop 100 m", tier: B, decision: fallback, reason: "if counts join fails", verified: false}
+
+  I13_short_term_rentals:
+    best_candidate:
+      tier: A
+      source_name: "Turismo de Portugal, Registo Nacional de Alojamento Local (RNAL): 'Estabelecimentos de Alojamento Local' open-data layer"
+      url: https://dadosabertos.turismodeportugal.pt/
+      access:
+        method: api
+        endpoint: https://geo.turismodeportugal.pt/server/rest/services/TDP/OpenData_AL/MapServer/6
+        registration: false
+      licence:
+        id: CC-BY-4.0
+        class: shareable
+        attribution: "Turismo de Portugal, I.P., RNAL"
+        evidence: "dados.gov.pt record 'Turismo de Portugal - Dados Abertos' (the hub as a whole) = cc-by; item-level licence field empty in the Hub search API. Confirm"
+      vintage: "Hub item modified 2026-10-09 (daily refresh)"
+      resolution: "registered AL establishments with location (georeference reliability flagged per record per SIGTUR)"
+      coverage: null
+      verified: partial
+      verification: "ArcGIS Hub search API returned the item and service URL; the MapServer itself timed out (40 s) from the probe location, possibly geo-restricted"
+    considered:
+      - source_name: "Inside Airbnb, Lisbon"
+        tier: B
+        decision: fallback
+        reason: "verified snapshot 2026-09-19; aggregates only, raw not republishable"
+        url: https://data.insideairbnb.com/portugal/lisbon/lisbon/2026-09-19/data/listings.csv.gz
+        verified: true
+      - {source_name: "CML ArcGIS 'Alojamento' service", tier: A, decision: rejected, reason: "layer 0 is 'Hotelaria' (hotels), not AL", url: "https://services.arcgis.com/1dSrzEWVQn5kHHyK/arcgis/rest/services/Alojamento/FeatureServer", verified: true}
+
+  I19_transit:
+    baseline: {source_name: "OSM via Overpass: public_transport stops/platforms + route relations; frequency = default headway per mode", tier: C, licence: {id: ODbL-1.0, class: shareable}}
+    best_candidate:
+      tier: A
+      source_name: "Carris (Companhia Carris de Ferro de Lisboa, municipal), official GTFS v2.11 gateway"
+      url: https://www.carris.pt
+      access:
+        method: download
+        endpoint: https://gateway.carris.pt/gateway/gtfs/api/v2.11/GTFS
+        alt_endpoints:
+          - https://files.mobilitydatabase.org/mdb-2929/latest.zip
+        registration: false
+        format: "GTFS static"
+        note: "gateway rejects HEAD (405) and ignores Range; the Mobility Database mirror is byte-identical in size and supports Range"
+      mobility_database_id: mdb-2929
+      operators: [Carris]
+      modes: [bus, tram, funicular, lift]
+      mode_note: "every Carris route is coded route_type 3 (bus), including the electric trams (route_short_name ending in 'E', e.g. 15E, 28E), the ascensores (e.g. 53E Bica) and the Santa Justa lift (54E). Recode by the 'E' suffix before computing per-mode metrics"
+      licence:
+        id: unknown
+        class: local-only
+        attribution: "Carris, Companhia Carris de Ferro de Lisboa"
+        evidence: "No licence on the gateway or in the Mobility Database entry. The predecessor dataset 'Informação sobre Transportes Públicos da Cidade de Lisboa - Carris' (Lisboa Aberta / dados.gov.pt, via Transporlis) was cc-zero but was archived on 2025-07-10. Ask Carris to confirm CC0 for the current feed; then upgrade to shareable"
+      vintage: "gtfs_2026-10-09.zip; feed_info validity 2026-10-09 to 2026-10-24 (rolling ~2 weeks); MDB mirror Last-Modified 2026-10-10"
+      file_size_bytes: 47873415
+      coverage_note: "Carris is the city's surface network (176 routes incl. trams and funiculars). Metro, suburban rail, ferries and the metropolitan buses entering Lisbon come from the complements. Shareable-only fallback: Metro + Carris Metropolitana feeds, with OSM for the Carris network"
+      derivation: "stop-level departures per hour (weekday 07–19) from stop_times; headway per route; merge all feeds by stop proximity (≤ 50 m) for interchange nodes"
+      verified: true
+      verification: "Range GET on gateway: 200 application/octet-stream, Content-Length 47,873,415, filename gtfs_2026-10-09.zip (download aborted by size guard). MDB mirror same length, Last-Modified 2026-10-10; central directory: agency, calendar, calendar_dates, feed_info, routes (176 rows, all route_type 3), shapes, stops, stop_times (145 MB), trips"
+    complements:
+      - source_name: "Metropolitano de Lisboa GTFS"
+        tier: A
+        url: https://www.metrolisboa.pt
+        access: {method: download, endpoint: "https://www.metrolisboa.pt/google_transit/googleTransit.zip", registration: false, format: "GTFS static", note: "HEAD returns 405 and the default curl User-Agent gets 403; send a descriptive User-Agent"}
+        mobility_database_id: tld-716
+        modes: [metro]
+        licence: {id: CC-BY-4.0, class: shareable, attribution: "Metropolitano de Lisboa, E.P.E.", evidence: "dados.gov.pt dataset 'GTFS do Metropolitano de Lisboa' (organisation Metropolitano de Lisboa) license=cc-by; the live URL is the same publisher's current version"}
+        alt_endpoints: ["https://dados.gov.pt/s/resources/gfts-do-metropolitano-de-lisboa/20260114-115938/gtfs.zip (CC BY snapshot 2026-01-14, 294 KB)"]
+        vintage: "Last-Modified 2026-09-04; feed_info 2026-06-20 to 2026-12-31 (version 23.04.00)"
+        file_size_bytes: 659817
+        verified: true
+        verification: "Range GET 206, Content-Range bytes 0-2047/659817; central directory has 16 files incl. GTFS-Fares v2; routes.txt = 4 lines (Azul, Amarela, Verde, Vermelha), route_type 1"
+      - source_name: "CP - Comboios de Portugal national GTFS (suburban lines Sintra, Azambuja, Cascais, Sado + regional/long distance)"
+        tier: A
+        url: https://www.cp.pt
+        access: {method: download, endpoint: "https://publico.cp.pt/gtfs/gtfs.zip", registration: false, format: "GTFS static"}
+        mobility_database_id: mdb-2057
+        modes: [rail]
+        licence: {id: unknown, class: local-only, attribution: "CP - Comboios de Portugal", evidence: "no licence on the feed; Transitland points to NAP Portugal supply 176 (JS-only page, not readable by script). The archived Transporlis-era CP dataset on dados.gov.pt was cc-zero"}
+        vintage: "Last-Modified 2026-10-10 00:05 GMT (daily)"
+        file_size_bytes: 298669
+        verified: true
+        verification: "HEAD 200, Accept-Ranges bytes; routes.txt: 55 routes route_type 109 (suburban: Linha de Sintra, Azambuja, Cascais...) + 125 route_type 2"
+      - source_name: "Carris Metropolitana GTFS (TML metropolitan bus network; routes entering Lisbon)"
+        tier: A
+        url: https://github.com/carrismetropolitana/gtfs
+        access: {method: download, endpoint: "https://api.carrismetropolitana.pt/gtfs", registration: false, format: "GTFS static", note: "307 → /v2/gtfs; server ignores Range"}
+        mobility_database_id: mdb-2027
+        modes: [bus]
+        licence: {id: CC-BY-4.0, class: shareable, attribution: "Carris Metropolitana / TML - Transportes Metropolitanos de Lisboa", evidence: "GitHub repo carrismetropolitana/gtfs licence CC-BY-4.0; GTFS-derived stops/shapes datasets on dados.gov.pt = cc-by (the GTFS dataset record itself says 'notspecified')"}
+        vintage: "files dated 2026-10-09 (CMET.zip)"
+        file_size_bytes: 92737393
+        verified: true
+        verification: "HEAD 200 application/zip, Content-Length 92,737,393, filename CMET.zip. Note: the server ignored a Range request and the whole file was fetched once by mistake (deleted unread except the central directory: agency, calendar_dates, feed_info, plans, routes, shapes, stop_times, stops, trips)"
+      - source_name: "Transtejo Soflusa (TTSL) ferries GTFS (Cais do Sodré, Terreiro do Paço, Belém)"
+        tier: A
+        url: https://ttsl.pt
+        access: {method: download, endpoint: "https://api.transtejo.pt/files/GTFS.zip", registration: false, format: "GTFS static", note: "TLS certificate of api.transtejo.pt expired (2026-10-10 probe); MDB mirror https://files.mobilitydatabase.org/mdb-2921/latest.zip"}
+        mobility_database_id: mdb-2921
+        modes: [ferry]
+        licence: {id: unknown, class: local-only, attribution: "Transtejo Soflusa", evidence: "no licence on the feed; MDB's licence link points to an unrelated Carris Metropolitana docs page. Archived Transporlis-era Transtejo/Soflusa datasets were cc-zero"}
+        vintage: "Last-Modified 2026-10-10 03:00 GMT; MDB copy feed_info 2026-08-16 to 2027-08-01"
+        file_size_bytes: 20438
+        verified: true
+        verification: "HEAD (with -k, cert expired) 200, 20,438 bytes. MDB mirror routes.txt: 5 ferry routes (route_type 4): Montijo, Seixal, Cacilhas – Cais do Sodré; Barreiro – Terreiro do Paço; Trafaria – Porto Brandão – Belém – Algés"
+      - source_name: "Fertagus (Roma-Areeiro – Setúbal rail across the 25 de Abril bridge)"
+        tier: A
+        url: https://www.fertagus.pt
+        access: {method: download, endpoint: "https://www.fertagus.pt/GTFSTMLzip/Fertagus_GTFS.zip", registration: false, format: "GTFS static"}
+        mobility_database_id: tld-715
+        modes: [rail]
+        licence: {id: unknown, class: local-only, attribution: "Fertagus", evidence: "no licence on the feed; Transitland points to NAP Portugal supply 185 (JS-only)"}
+        vintage: "Last-Modified 2026-09-14"
+        file_size_bytes: 87670
+        verified: true
+        verification: "HEAD 200, 87,670 bytes; central directory has 12 files incl. shapes and fares"
+    considered:
+      - source_name: "TML GO hub 'plans' GTFS (go.tmlmobilidade.pt)"
+        tier: A
+        decision: rejected
+        reason: "Despite the Mobility Database listing it as multimodal (tram, metro, rail, bus, ferry), agency.txt holds only Fertagus, Carris Metropolitana (4 areas) and Transtejo Soflusa: 949 routes, no Metro, no Carris municipal, no CP. No data licence (MDB cites the AGPL-3.0 code licence). The separate feeds above cover the same content with better licence clarity"
+        url: https://go.tmlmobilidade.pt/hub/api/v1/plans/gtfs
+        mobility_database_id: mdb-3412
+        file_size_bytes: 92849442
+        verified: true
+      - source_name: "Archived Lisboa Aberta 'Informação sobre Transportes Públicos da Cidade de Lisboa' (Carris, Metro, CP, Transtejo, Soflusa; via Transporlis)"
+        tier: A
+        decision: rejected
+        reason: "cc-zero but archived 2025-07-10 and resources date from 2016; Transporlis is defunct. Useful only as licence precedent"
+        url: https://dados.gov.pt/datasets/informacao-sobre-transportes-publicos-da-cidade-de-lisboa-carris
+        verified: true
+      - {source_name: "NAP Portugal (nap-portugal.imt-ip.pt) multimodal supply records", tier: A, decision: unverified, reason: "per-operator licence pages exist (Transitland cites supplies 176, 185, 186) but the site is a JS app; not readable by script. Check manually for CP/Carris/TTSL/Fertagus licences", verified: false}
+      - {source_name: "Carris real-time API", tier: A, decision: rejected, reason: "no longer public (case-by-case access, per Lisboa Para Pessoas); static GTFS suffices", verified: false}
+
+  I20_amenities:
+    baseline:
+      source_name: "Overture places (categories) + OSM amenity/shop/leisure/healthcare tags"
+      tier: B
+      licence: {id: "CDLA-Permissive-2.0 (Overture places; Foursquare part Apache-2.0, AllThePlaces part CC0-1.0) / ODbL-1.0 (OSM)", class: shareable}
+      licence_evidence: "docs.overturemaps.org/attribution, Places section (read 2026-10-10)"
+    best_candidate:
+      tier: A
+      categories: [schools, kindergartens, pharmacies, health_centres, libraries, culture, markets, sports]
+      source_name: "Câmara Municipal de Lisboa POI services on ArcGIS Online: POIEducacao, POISaude, POICultura, POIComprar, Desporto_Instalacoes"
+      url: https://dados.gov.pt/datasets/farmacias-e-parafarmacias
+      access:
+        method: api
+        endpoint: "https://services.arcgis.com/1dSrzEWVQn5kHHyK/arcgis/rest/services/POISaude/FeatureServer/1/query?outFields=*&where=1%3D1&f=geojson"
+        services:
+          POIEducacao: "layers 1 public pre-school, 12 public 1st cycle, 13 2nd+3rd cycle, 10/14 secondary, 5-8/11 private schools, 0 higher ed, 9/2 vocational"
+          POISaude: "0 centros de saúde, 1 farmácias, 2-4 hospitals"
+          POICultura: "1 bibliotecas/arquivos, 0 auditoriums, 2 cinemas, 3 museums, 4 theatres, 7 cultural centres, ..."
+          POIComprar: "0 shopping centres, 1 fairs, 2 municipal markets"
+          Desporto_Instalacoes: "0 sports installations (type, subtype, managing entity)"
+        registration: false
+      licence:
+        id: CC0-1.0
+        class: shareable
+        attribution: "Câmara Municipal de Lisboa (courtesy attribution; CC0 requires none)"
+        evidence: "dados.gov.pt API: 'Farmácias e Parafarmácias', 'Escolas Públicas - Pré-Escolar', 'Escolas Públicas - Secundário', 'Escolas Privadas - Secundárias', 'Escolas Profissionais', 'Instalações Desportivas' all license=cc-zero, publisher Município de Lisboa; the pharmacy record's resource URL is the POISaude/1 GeoJSON query itself"
+      vintage: "layers last edited 2026-09-21 (Desporto_Instalacoes 2026-06-26)"
+      resolution: "points with name, address, postcode, freguesia, type; INF_ACTIVO flag on most POI layers"
+      coverage: null
+      coverage_note: >
+        Counts (returnCountOnly): 85 public 1st-cycle schools, 82 public pre-schools, 191 private
+        pre-schools, 36 health centres, 242 pharmacies, 186 libraries/archives, 14 municipal markets,
+        1,982 sports installations. No groceries or cafés/restaurants: those stay on Overture/OSM.
+      verified: true
+      verification: "service JSON read for all five services (copyright 'CMLisboa 2026'); layer fields and lastEditDate read; counts queried; licence via dados.gov.pt API"
+    considered:
+      - source_name: "CML Recenseamento Comercial (commercial census points, 1991–2010)"
+        tier: A
+        categories: [retail, cafes_restaurants]
+        decision: rejected
+        reason: "would split groceries/cafés, but the last vintage is 2010"
+        url: https://services.arcgis.com/1dSrzEWVQn5kHHyK/arcgis/rest/services/RecenseamentoComercial/FeatureServer
+        verified: true
+      - source_name: "TML (Transportes Metropolitanos de Lisboa) 'Escolas da área metropolitana de Lisboa'"
+        tier: A
+        categories: [schools]
+        decision: local-only
+        reason: "metro-wide school list, but dados.gov.pt licence 'notspecified' (modified 2023-09-05). CML POIEducacao already covers the city"
+        url: https://dados.gov.pt/datasets/escolas-da-area-metropolitana-de-lisboa
+        verified: partial

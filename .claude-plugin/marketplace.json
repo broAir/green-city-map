@@ -1,0 +1,26 @@
+{
+  "name": "green-city-map",
+  "owner": {
+    "name": "broAir"
+  },
+  "metadata": {
+    "description": "Green City Map: score every residential street of a city for how good it is to live on, from open data.",
+    "version": "0.2.0"
+  },
+  "plugins": [
+    {
+      "name": "green-city-map",
+      "description": "Scores every residential street of a city 0-100 for light and open views, trees, nature on foot, quiet, few tourists and daily needs without a car. Open data only (OpenStreetMap, Overture Maps, Copernicus Sentinel-2, ESA WorldCover). Runs a local Python pipeline and builds a review map.",
+      "version": "0.2.0",
+      "source": "./skill",
+      "author": {
+        "name": "broAir"
+      },
+      "homepage": "https://github.com/broAir/green-city-map",
+      "repository": "https://github.com/broAir/green-city-map",
+      "license": "PolyForm-Noncommercial-1.0.0",
+      "keywords": ["livability", "walkability", "green space", "noise", "OpenStreetMap", "Overture Maps", "open data", "maps"],
+      "category": "data"
+    }
+  ]
+}

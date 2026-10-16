@@ -1,0 +1,31 @@
+# Local working folders made by the skill. They are large or rebuilt on every run.
+# data/: raw downloads and logs (skill/run_city.sh)
+# out/: pipeline outputs per city
+# share/: packaged city bundles (skill/pipeline/package_city.py)
+# review/: local review map (skill/viewer/build_review.py)
+/data/
+/out/
+/share/
+/review/
+*.gcm.zip
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/
+
+# Secrets, logs and editor or system files
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+.idea/
+.vscode/
+
+# Local Claude Code files (paths and permissions of one machine)
+.claude/settings.local.json
+CLAUDE.local.md

@@ -1,0 +1,73 @@
+name: Add a city
+description: Ask for a city, say that you mapped one with the skill, or point to better local data.
+title: "[City] "
+labels: ["city"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping to map more cities. You can ask for a city without running anything, or tell us about a city you mapped yourself.
+
+        Please don't attach bundles (.gcm.zip). A city reaches the map only through the website upload, which a person approves and the site owner checks (docs/UPLOAD.md). Bundles attached to issues are never put on the map.
+
+        Please don't include your home address, API keys or other private details.
+  - type: input
+    id: city
+    attributes:
+      label: City
+      description: The name people use, and the local name if it differs.
+      placeholder: "Lisbon (Lisboa)"
+    validations:
+      required: true
+  - type: input
+    id: country
+    attributes:
+      label: Country
+      placeholder: "Portugal"
+    validations:
+      required: true
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What are you sending?
+      options:
+        - "A request: please map this city"
+        - "A finished city: I ran the skill and will send it through the website"
+        - "Better local data for a city (noise map, trees, building heights, timetables)"
+    validations:
+      required: true
+  - type: textarea
+    id: quality
+    attributes:
+      label: Quality report
+      description: |
+        If you mapped the city, paste the quality report printed by validate_city.py, or say which warnings it gave. Don't attach the bundle itself.
+    validations:
+      required: false
+  - type: textarea
+    id: sources
+    attributes:
+      label: Local open data
+      description: |
+        Links to official open data that could make this city's map better, with the licence of each, if you know it. Open licences only (for example CC BY, CC0, ODbL, a government open licence).
+      placeholder: |
+        Noise map: https://... (licence: CC BY 4.0)
+        Tree register: https://... (licence: unknown)
+    validations:
+      required: false
+  - type: textarea
+    id: why
+    attributes:
+      label: Anything else
+      description: Which parts of the city matter most, or what you would like to compare.
+    validations:
+      required: false
+  - type: checkboxes
+    id: rules
+    attributes:
+      label: Before you send
+      options:
+        - label: "I only used or suggested open data. Nothing from Google, Apple or Bing maps."
+          required: true
+        - label: "If I mapped the city, it passed validate_city.py and I agree that the city data is shared under the Open Database License (ODbL)."
+          required: false

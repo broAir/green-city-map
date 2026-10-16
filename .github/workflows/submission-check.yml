@@ -1,0 +1,111 @@
+# Checks a pull request that adds an upload receipt to .submissions/ (see docs/UPLOAD.md).
+#
+# This check helps reviewers, but it is not the gate. The site owner runs
+# `python -m web.admin publish --pr N` and merges only with the pinned squash-merge command it prints.
+#
+# Safety rules for this file:
+# - It runs on pull_request_target, so GitHub always takes this workflow from the default branch.
+#   A pull request that edits this file, or adds another workflow, can't change this check.
+#   (On pull_request, GitHub would run the copy of the workflow in the pull request.)
+# - The checker, check_receipt.py, also comes from the default branch as it is now (./base),
+#   never from the pull request (./pr).
+# - Nothing from ./pr is ever run: no scripts, builds, installs, actions or tools from it.
+#   Only git reads it, and check_receipt.py reads the one receipt as data.
+#   Never add a step that runs anything from ./pr: on pull_request_target that is how
+#   repositories get taken over.
+# - Read-only token, no secrets, no caches, credentials not kept in either checkout.
+# - Nothing from the pull request (title, branch, file names) is written into a run: line.
+#   Values reach the shell only through env: and are always quoted.
+# - The checker's output is printed between ::stop-commands:: markers, so text from the pull
+#   request can't act as a workflow command.
+# - The pull request must be one commit straight on top of the default branch, and the files
+#   checked are that commit's own change, which is exactly what a squash merge adds.
+name: Submission check
+
+on:
+  # zizmor: pull_request_target is safe here only because nothing from the pull request is run.
+  pull_request_target: # zizmor: ignore[dangerous-triggers]
+    types: [opened, synchronize, reopened, edited]
+    paths:
+      - ".submissions/**"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: submission-check-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Check the receipt
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Check out the default branch (the trusted checker)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          path: base
+          persist-credentials: false
+
+      - name: Check out the pull request (read as data, never run)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: pr
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: List the changed files
+        env:
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          set -euo pipefail
+          fail() { echo "FAIL: $1"; exit 1; }
+          if [ "$BASE_REF" != "$DEFAULT_BRANCH" ]; then
+            fail "the pull request must go into the default branch."
+          fi
+          # the default branch as checked out in ./base, which holds the checker used below
+          main="$(git -C base rev-parse HEAD)"
+          git -C pr cat-file -e "${main}^{commit}" || fail "the default branch moved during the check; run it again."
+          count="$(git -C pr rev-list --count "${main}..${HEAD_SHA}")"
+          if [ "$count" != "1" ]; then
+            fail "the pull request must be exactly one commit on top of the default branch (it has ${count}). Start a new branch from the latest default branch and add only the receipt."
+          fi
+          if git -C pr rev-parse -q --verify "${HEAD_SHA}^2" > /dev/null; then
+            fail "the commit must not be a merge commit."
+          fi
+          parent="$(git -C pr rev-parse -q --verify "${HEAD_SHA}^1")" || fail "the commit has no parent."
+          git -C pr merge-base --is-ancestor "$parent" "$main" || fail "the commit must start from the default branch."
+          git -C pr diff --name-status --no-renames "$parent" "$HEAD_SHA" > changes.txt
+
+      - name: Check the receipt with the default branch's checker
+        env:
+          GCM_SITE: ${{ vars.GCM_SITE }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          receipt="$(awk -F '\t' '$1 == "A" { print $2; exit }' changes.txt)"
+          args=(--changed changes.txt)
+          if [ -n "${GCM_SITE:-}" ]; then
+            args+=(--site "$GCM_SITE")
+          fi
+          stop="$(python3 -I -c 'import secrets; print(secrets.token_hex(16))')"
+          echo "::stop-commands::${stop}"
+          status=0
+          python3 -I base/skill/pipeline/check_receipt.py "${args[@]}" -- "pr/${receipt}" || status=$?
+          if [ "$status" = "0" ]; then
+            entry="$(git -C pr ls-tree "$HEAD_SHA" -- "$receipt" | awk '{ print $1 " " $2; exit }')"
+            if [ "$entry" != "100644 blob" ]; then
+              echo "FAIL: the receipt must be a plain file (git mode 100644)."
+              status=1
+            fi
+          fi
+          if [ -z "${GCM_SITE:-}" ]; then
+            echo "NOTE: the website was not asked about this upload (GCM_SITE is not set for this run)."
+          fi
+          echo "::${stop}::"
+          exit "$status"

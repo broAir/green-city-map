@@ -1,0 +1,58 @@
+# Fails when a commit would add files that Claude Code loads or runs from this repository:
+# plugin hooks, bin/, MCP or LSP servers, monitors, settings, agents or commands, .claude/ files,
+# symbolic links or submodules. The list and the reasons are in .github/scripts/protected_paths.py.
+#
+# Safety rules for this file (the same as submission-check.yml):
+# - pull_request_target: GitHub takes this workflow from the default branch, so a pull request
+#   can't change it. The script also comes from the default branch (./base).
+# - Nothing from the pull request (./pr) is ever run. git lists its files; the script reads that list.
+# - Read-only token, no secrets, no caches, credentials not kept in either checkout.
+# - No pull request values in run: lines; output between ::stop-commands:: markers.
+name: Protected paths
+
+on:
+  # zizmor: pull_request_target is safe here only because nothing from the pull request is run.
+  pull_request_target: # zizmor: ignore[dangerous-triggers]
+    types: [opened, synchronize, reopened, edited]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: protected-paths-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
+
+jobs:
+  paths:
+    name: Check for plugin and agent files
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Check out the default branch (the trusted script)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          path: base
+          persist-credentials: false
+
+      - name: Check out the commit to check (read as data, never run)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          path: pr
+          persist-credentials: false
+
+      - name: Check the files
+        env:
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          git -C pr ls-tree -r -z --full-tree "$HEAD_SHA" > tree.bin
+          stop="$(python3 -I -c 'import secrets; print(secrets.token_hex(16))')"
+          echo "::stop-commands::${stop}"
+          status=0
+          python3 -I base/.github/scripts/protected_paths.py tree.bin || status=$?
+          echo "::${stop}::"
+          exit "$status"

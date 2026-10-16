@@ -1,0 +1,325 @@
+# Green City Map: street-heatmap metrics, v1 (machine-readable).
+# Human-readable definition: spec/street-heatmap.md. Spec metric IDs refer to spec/metrics.md.
+version: "0.2.0"
+
+piece:
+  max_length_m: 60
+  scored_classes: [primary, secondary, tertiary, residential, living_street, unclassified, pedestrian, service,
+                   footway, steps]
+  lane_classes: [footway, steps]              # scored only when they are lanes between buildings (old towns)
+  footway_needs_both_sides_within_m: 15     # a footway is scored only if it is a lane between buildings
+  context_classes: [motorway, trunk]        # drawn, not scored
+  exclude_road_flags: [is_tunnel, is_under_construction]
+  exclude_subclasses: [sidewalk, crosswalk, cycle_crossing, driveway, parking_aisle, drive_through]
+  # service roads stay in: in post-Soviet microdistricts the roads between apartment blocks are tagged service
+
+cross_section:
+  spacing_m: 15
+  ray_max_m: 60
+  frontage_max_m: 40          # a piece needs a building hit this close on at least one side
+  view_sample_step_m: 2.5
+  green_view_ndvi_min: 0.5    # a view sample counts as green if WorldCover says tree OR summer NDVI >= this
+  eye_height_m: 4.5           # first floor above ground
+  open_hw_cap: 0.3            # H/W used when one side has no building
+
+heights:                      # global ladder, first match wins per building
+  - {source: overture.height, tier: B}
+  - {source: overture.num_floors, floor_height_m: 3.0, roof_m: 1.0, tier: B}
+  - {source: neighbour_median, radius_m: 150, min_known: 5, tier: C}
+  - {source: city_median_by_footprint_size, size_breaks_m2: [60, 150, 400, 1500], tier: C}
+
+rasters:
+  grid_m: 10
+  worldcover_tree_classes: [10]
+  worldcover_builtup_class: 50
+  worldcover_water_class: 80
+  sealed_rule: "worldcover == builtup AND ndvi < sealed_ndvi_max"
+  sealed_ndvi_max: 0.3
+  focal_radii_m: {canopy_300: 300, sealed_300: 300, ndvi_500: 500}
+
+nature:
+  land_use_classes: [park, nature_reserve, forest, wood, recreation_ground, protected_area, national_park,
+                     meadow, grassland, heath, scrub, village_green, garden]
+  land_classes: [forest, wood, scrub, grassland, heath, wetland, marsh, beach, meadow, shrubland]
+  exclude_classes: [cemetery, grave_yard, golf_course, pitch, allotments, farmland, farmyard, orchard,
+                    vineyard, military, construction, brownfield, stadium, track, zoo, theme_park]
+  merge_gap_m: 10
+  min_mean_ndvi: 0.4          # beaches exempt
+  entrance_snap_m: 25
+  tiers:                      # Natural England Accessible Greenspace Standard ladder
+    - {min_ha: 2,   max_walk_m: 300}
+    - {min_ha: 10,  max_walk_m: 1000}
+    - {min_ha: 20,  max_walk_m: 2000}
+    - {min_ha: 100, max_walk_m: 5000}
+    - {min_ha: 500, max_walk_m: 10000}
+  walk_exclude_classes: [motorway, trunk]
+
+noise_proxy:                  # UNCALIBRATED design values, dB Lden at 10 m from centreline
+  road_l_ref:
+    motorway: 78
+    trunk: 75
+    primary: 72
+    secondary: 68
+    tertiary: 64
+    unclassified: 58
+    residential: 55
+    living_street: 50
+    pedestrian: 45
+    footway: 40
+    steps: 40
+    service: 50
+  rail_l_ref:
+    standard_gauge: 70
+    narrow_gauge: 66
+    light_rail: 64
+    tram: 64
+    subway: 64                # only where not flagged as a tunnel
+  neighbour_radius_m: 300
+  neighbour_min_l_ref: 64     # tertiary and louder, plus rail
+  shielding_db: 15
+  facade_min_distance_m: 3
+
+tourism:
+  place_category_patterns: [attraction, landmark, museum, monument, tourist, hotel, hostel, viewpoint,
+                            sightseeing, historic, gallery, souvenir, cathedral, castle, palace]
+  kernel_sigma_m: 300
+  # Scored on an absolute scale (places per km², kernel-smoothed), so a city with few visitors has no
+  # "touristy" streets. Reference points in the six test cities: median street 0-8; Kraków Old Town 200-400,
+  # Kazimierz ~180, Amsterdam centre up to ~300, Lisbon Baixa/Alfama 150-370, Dnipro never above 40.
+  very_touristy_per_km2: 120  # trait "Very touristy"
+  busy_per_km2: 40            # trait "Lots of visitors"
+
+# Everyday access (v1): can you live here without a car? Walking distances on the walk graph.
+walk_graph:
+  densify_m: 50               # extra nodes along long segments so snapping error stays small
+  snap_max_m: 150             # POIs and stops further than this from any walkable street are dropped
+  walk_speed_m_per_min: 80    # 4.8 km/h, as in TfL PTAL
+
+transit:                      # M20. PTAL-lite, after TfL "Assessing transport connectivity in London" (2015)
+  source: osm_overpass        # global baseline: OSM stops + route relations. GTFS adapters (tier A) add real frequencies
+  modes:                      # catchment = max walk; reliability = PTAL reliability allowance; per_hour = default frequency
+    bus:        {group: surface, catchment_m: 640, reliability_min: 2.0,  default_per_hour: 6}
+    trolleybus: {group: surface, catchment_m: 640, reliability_min: 2.0,  default_per_hour: 6}
+    minibus:    {group: surface, catchment_m: 640, reliability_min: 2.0,  default_per_hour: 4}
+    share_taxi: {group: surface, catchment_m: 640, reliability_min: 2.0,  default_per_hour: 4}
+    tram:       {group: surface, catchment_m: 960, reliability_min: 0.75, default_per_hour: 7.5}
+    light_rail: {group: rapid,   catchment_m: 960, reliability_min: 0.75, default_per_hour: 7.5}
+    subway:     {group: rapid,   catchment_m: 960, reliability_min: 0.75, default_per_hour: 15}
+    monorail:   {group: rapid,   catchment_m: 960, reliability_min: 0.75, default_per_hour: 10}
+    train:      {group: rapid,   catchment_m: 960, reliability_min: 0.75, default_per_hour: 3}
+    ferry:      {group: rapid,   catchment_m: 960, reliability_min: 2.0,  default_per_hour: 2}
+  use_osm_interval_tag: true  # an OSM route's interval=* (headway) overrides the default frequency
+  exclude_route_tags: {service: [long_distance, high_speed, night, international], by_night: ["yes", only]}
+  exclude_ref_regex: "^N ?\\d"    # night lines by number
+  exclude_name_regex: "night|nocn|nacht|nuit|noct|нічн|ночн"   # night lines by name (Kraków numbers them 6xx)
+  unrouted_adopt_m: 150       # a stop no line lists takes the same-mode lines of listed stops this close
+  entrance_adopt_m: 250       # metro entrances take the routes of the nearest station
+  rapid_snap_max_m: 300       # station platforms often sit inside a track field, far from any street
+  unrouted_stop_routes: 1     # a stop that no OSM route relation lists still counts as one route
+  display_cluster_m: 120      # stops with the same name and group merge into one map symbol
+  sdg_11_2_1: {surface_m: 500, rapid_m: 1000}   # UN SDG 11.2.1 "convenient access" walk distances
+
+amenities:                    # M21. Daily needs within walking distance (15-minute-city family of indicators)
+  sources: [osm_overpass, overture_places]
+  overture_min_confidence: 0.7
+  dedupe_m: 40                # an Overture place is dropped if OSM has the same category within this distance
+  reach_m: 800                # "within a 10-minute walk", for the count shown on the card
+  categories:                 # band points are DESIGN TARGETS (walk metres -> score), not a published standard
+    - id: groceries
+      label: Groceries
+      osm: {shop: [supermarket, convenience, greengrocer, bakery, butcher, deli, grocery, general, farm, cheese,
+                   seafood, health_food, dairy, frozen_food], amenity: [marketplace]}
+      overture: [grocery_store, supermarket, convenience_store, superstore, produce_store, butcher_shop, bakery,
+                 farmers_market, organic_grocery_store, fishmonger, cheese_shop, deli]
+      points: [[300, 100], [600, 75], [1000, 40], [1600, 10], [2400, 0]]
+    - id: food_drink
+      label: "Cafés, bars, restaurants"
+      osm: {amenity: [cafe, restaurant, bar, pub, biergarten, fast_food, ice_cream, food_court]}
+      overture: [restaurant, cafe, coffee_shop, bar, pub, casual_eatery, alcoholic_beverage_venue,
+                 non_alcoholic_beverage_venue, food_court, fast_food_restaurant]
+      points: [[300, 100], [600, 75], [1000, 40], [1600, 10], [2400, 0]]
+    - id: pharmacy
+      label: Pharmacy
+      osm: {amenity: [pharmacy], healthcare: [pharmacy]}
+      overture: [pharmacy]
+      points: [[500, 100], [800, 75], [1200, 45], [2000, 10], [3000, 0]]
+    - id: doctor
+      label: "Doctor or clinic"
+      osm: {amenity: [doctors, clinic, dentist, hospital], healthcare: [doctor, clinic, centre, dentist, hospital]}
+      overture: [doctors_office, primary_care_or_general_clinic, dental_clinic, general_dentistry, hospital,
+                 outpatient_care_facility, family_practice, pediatrician, medical_center, urgent_care_clinic]
+      points: [[500, 100], [1000, 70], [1600, 35], [2500, 0]]
+    - id: school
+      label: "School or kindergarten"
+      osm: {amenity: [school, kindergarten, childcare]}
+      overture: [elementary_school, school, public_school, private_school, middle_school, preschool,
+                 day_care_preschool, child_care_and_day_care, kindergarten]
+      points: [[500, 100], [1000, 70], [1600, 35], [2500, 0]]
+    - id: culture_sport
+      label: "Library, cinema, gym, culture"
+      osm: {amenity: [library, cinema, theatre, arts_centre, community_centre], leisure: [sports_centre, fitness_centre]}
+      overture: [library, movie_theater, theatre_venue, performing_arts_venue, cultural_center, community_center,
+                 gym, fitness_studio, sport_or_fitness_facility, swimming_pool, recreation_center]
+      points: [[500, 100], [1000, 70], [2000, 25], [3000, 0]]
+
+metrics:
+  - {id: W, spec: M01, label: "Facing distance", unit: m, sub_index: view, tier_from: heights_footprints,
+     scoring: {type: bands, open_value_score: 100,
+               points: [[4, 0], [6, 20], [10, 45], [20, 75], [50, 100]]},
+     note: "EN 17037 outside-view distance tiers 6/20/50 m"}
+  - {id: theta, spec: M01, label: "Sky blocked (obstruction angle)", unit: deg, sub_index: view, tier_from: heights,
+     scoring: {type: bands, points: [[0, 100], [25, 75], [45, 30], [60, 0]]},
+     note: "BRE 25-degree screen; 45-degree envelope"}
+  - {id: hw, spec: M03, label: "Canyon ratio H/W", unit: ratio, sub_index: view, tier_from: heights,
+     scoring: {type: bands, points: [[0.3, 100], [0.5, 90], [1.0, 70], [2.0, 35], [3.0, 10], [4.0, 0]]},
+     note: "VR studies: 0.5-1 comfortable, >2 cramped"}
+  - {id: green_across, spec: M04, label: "Green across the street", unit: share, sub_index: view, tier_from: canopy,
+     scoring: {type: percentile, higher_is_better: true}}
+  - {id: canopy_300, spec: M06, label: "Tree canopy within 300 m", unit: "%", sub_index: green, tier_from: canopy,
+     scoring: {type: bands, points: [[0, 0], [10, 35], [20, 65], [30, 90], [40, 100]]},
+     note: "3-30-300 target 30%; ~40% for cooling"}
+  - {id: sealed_300, spec: M07, label: "Sealed surface within 300 m", unit: "%", sub_index: green, tier_from: sealed,
+     scoring: {type: percentile, higher_is_better: false}}
+  - {id: ndvi_500, spec: M08, label: "Greenness within 500 m", unit: NDVI, sub_index: green, tier_from: ndvi,
+     scoring: {type: percentile, higher_is_better: true}}
+  - {id: ndvi_corridor, spec: M08, label: "Street greenness", unit: NDVI, sub_index: green, tier_from: ndvi,
+     scoring: {type: percentile, higher_is_better: true}}
+  - {id: nature_tiers, spec: M12, label: "Nature access (tiers met of 5)", unit: tiers, sub_index: nature, tier_from: green_areas,
+     scoring: {type: bands, points: [[0, 0], [1, 30], [2, 55], [3, 75], [4, 90], [5, 100]]},
+     note: "Natural England ladder 2 ha/300 m ... 500 ha/10 km"}
+  - {id: noise_lden, spec: M15, label: "Noise (proxy)", unit: "dB Lden", sub_index: noise, tier_from: noise,
+     scoring: {type: bands, points: [[45, 100], [53, 80], [60, 45], [65, 20], [70, 5], [75, 0]]},
+     note: "WHO road traffic 53 dB Lden"}
+  - {id: major_road_m, spec: M16, label: "Distance to major road/rail", unit: m, sub_index: noise, tier_from: roads,
+     scoring: {type: bands, points: [[0, 0], [30, 30], [100, 70], [200, 100]]}}
+  - {id: tourism, spec: M18, label: "Tourism pressure", unit: "places/km²", sub_index: crowds, tier_from: tourism,
+     scoring: {type: bands, points: [[0, 100], [10, 90], [25, 75], [60, 40], [120, 10], [180, 0]]},
+     note: "absolute: tourist places per km², kernel σ 300 m"}
+  - {id: transit_ai, spec: M20, label: "Public transport (PTAL-lite)", unit: AI, sub_index: access, tier_from: transit,
+     scoring: {type: bands, points: [[0, 0], [2.5, 15], [5, 35], [10, 55], [15, 70], [20, 82], [25, 90], [40, 100]]},
+     note: "TfL PTAL bands: 1a <2.5, 1b <5, 2 <10, 3 <15, 4 <20, 5 <25, 6a <40, 6b 40+"}
+  - {id: daily_needs, spec: M21, label: "Daily needs on foot", unit: score, sub_index: access, tier_from: amenities,
+     scoring: {type: categories},
+     note: "mean of six walk-distance scores: groceries, cafés, pharmacy, doctor, school, culture and sport"}
+
+sub_indices:
+  - {id: view,   label: "View & openness", default_weight: 1}
+  - {id: green,  label: "Green & surface", default_weight: 1, max_share: 0.3}
+  - {id: nature, label: "Nature access",   default_weight: 1}
+  - {id: noise,  label: "Noise",           default_weight: 1, must_have: true, slack: 35}
+  - {id: crowds, label: "Tourism",         default_weight: 1, must_have: true, slack: 10}
+  - {id: access, label: "Everyday access", default_weight: 1, must_have: true}
+
+# A must-have sub-index caps the overall score: overall <= its score + slack (its own `slack`, else
+# must_have_slack). These are the deal-breakers that an average would hide:
+# - Everyday access: a quiet green street that you can only leave by car should not rank with a quiet
+#   green street next to a tram and a shop.
+# - Tourism (slack 10): a street in a tourist hotspot is hard to live on however pretty, quiet or well
+#   served it is (Kraków Old Town scored 62 as a plain average; with the cap it scores 10).
+# - Noise (slack 35, mild because the noise level is a road-type estimate): a flat on a loud main road
+#   can't come out "good" just because it is near shops and trams (Zakopiańska, Kraków: 70 before, 39 after).
+must_have_slack: 20
+
+# Extra scores (2026-10-11): for ranking districts and for the data, NOT part of the overall score or the map legend.
+# They answer the three things people add to "best area to live in {city}": walkable, for families, safe.
+# "safety" here means STREET safety: traffic danger, crossings, lighting and people around. We have no crime data
+# and do not guess it; never present this score as crime or personal safety.
+extras:
+  detour: 1.3                 # straight-line distance x this ~ walking distance, for playgrounds
+  walkable_highways: [residential, living_street, pedestrian, footway, path, steps, cycleway, unclassified,
+                      tertiary, tertiary_link, secondary, secondary_link, primary, primary_link, service, track]
+  junction_highways: [residential, living_street, pedestrian, unclassified, tertiary, tertiary_link, secondary,
+                      secondary_link, primary, primary_link, trunk, trunk_link]   # street junctions only: separately mapped sidewalks would count every crossing
+  road_classes: [living_street, residential, unclassified, tertiary, tertiary_link, secondary, secondary_link,
+                 primary, primary_link, trunk, trunk_link, service]
+  default_speed_kmh:          # when a road has no maxspeed tag; deliberately middle-of-the-road
+    pedestrian: 10
+    footway: 10
+    path: 10
+    steps: 10
+    cycleway: 15
+    living_street: 20
+    service: 20
+    residential: 40
+    unclassified: 50
+    tertiary: 50
+    tertiary_link: 50
+    secondary: 50
+    secondary_link: 50
+    primary: 60
+    primary_link: 50
+    trunk: 80
+    trunk_link: 60
+    other: 40
+  speed_match_m: 15           # a street piece takes the speed of the nearest road within this distance
+  lit_radius_m: 60            # lighting: share of tagged road length lit=yes within this radius
+  lit_min_coverage: 0.3       # below this share of road length tagged with lit (and no street lamp within 40 m): unknown
+  lamp_radius_m: 40
+  junction_radius_m: 400
+  crossing_radius_m: 150
+  eyes_radius_m: 100
+  bands:                      # [value, score] points, interpolated like the metrics above
+    speed_kmh: [[10, 100], [20, 95], [30, 80], [40, 60], [50, 40], [60, 20], [80, 0]]
+    junctions_km2: [[20, 0], [50, 35], [90, 70], [140, 100]]
+    playground_m: [[150, 100], [300, 85], [500, 55], [800, 25], [1200, 0]]
+    crossings: [[0, 20], [2, 60], [5, 90], [8, 100]]
+    eyes: [[0, 50], [3, 75], [8, 100]]
+  scores:                     # weights; missing parts (e.g. unknown lighting) are left out and the rest renormalised
+    walk:                     # "Easy on foot"
+      daily_needs: 0.40       # the daily-needs metric
+      junctions: 0.20         # how connected the street network is
+      calm_street: 0.25       # speed of the street itself
+      transit: 0.15           # the PTAL-lite metric
+    family:                   # "Good for families"
+      school: 0.25            # school or kindergarten on foot (the school band)
+      playground: 0.20
+      nature: 0.15            # sub-index
+      noise: 0.15             # sub-index
+      traffic: 0.15           # the traffic part of street safety
+      crowds: 0.10            # sub-index
+    safety:                   # "Safe streets: traffic and lighting" (not crime)
+      traffic: 0.55           # 0.5 own-street speed + 0.3 distance to a major road + 0.2 crossings nearby
+      lighting: 0.25
+      eyes: 0.20              # shops, cafés and other places within 100 m: people around
+  caps:                       # deal-breakers, as in the overall score: the extra score can't exceed the part + slack
+    family:
+      crowds: 30              # a tourist hotspot isn't a family neighbourhood, however many schools it has
+      noise: 40               # nor is a flat on a very loud road
+
+# Safety (2026-10-15): one district score combining every source we can reach. Each source keeps its own value
+# and an (i) note on the site saying where it comes from and that it can be unreliable. Missing sources are left
+# out and the rest re-weighted; crowd sources count in proportion to how much evidence they have.
+safety:
+  weights: {street: 0.30, recorded: 0.30, hoodmaps: 0.15, reddit: 0.15, city: 0.10}
+  neutral: 65                 # what a crowd source says when it says nothing either way
+  sources:
+    street:   {label: "Street safety (our estimate)", tooltip: "Our estimate from traffic speed, crossings, street lighting and how many places are open nearby. It is not about crime."}
+    recorded: {label: "Police-recorded crime", tooltip: "Crimes recorded by the police per resident, compared with the city average. Busy centres look worse because visitors aren't counted as residents, and not every crime gets reported."}
+    hoodmaps: {label: "Hoodmaps crowd", url: "https://hoodmaps.com", tooltip: "From Hoodmaps, a crowd map where anyone tags areas. Tags are often blunt or joking and nobody checks them. Can be unreliable."}
+    reddit:   {label: "Reddit", url: "https://www.reddit.com", tooltip: "From posts on the city's subreddit that name this district. Reddit users are a small, mostly young and male group. Can be unreliable."}
+    eurostat: {label: "Region (Eurostat)", url: "https://ec.europa.eu/eurostat", tooltip: "Police-recorded crime for the whole region, compared with the European median. Says nothing about this district in particular."}
+    numbeo:   {label: "City survey (Numbeo)", url: "https://www.numbeo.com", tooltip: "Numbeo's online survey for the whole city. Anyone can answer, so it can be unreliable."}
+  crowd:
+    prior: 25                 # votes (Hoodmaps) or distinct authors (Reddit) before a crowd signal counts fully
+    swing: 35                 # how far a one-sided crowd moves the score from neutral
+    crime_flag_penalty: 15    # Hoodmaps lists the area among its "crime" spots
+    min_authors: 5            # Reddit: fewer distinct authors than this and the district gets no Reddit value
+    # word starts that mark a tag or post as about danger or safety, in the languages of the cities so far;
+    # danger words are checked first, so "unsafe", "onveilig", "niebezpiecznie" never count as "safe"
+    # never add words about who lives somewhere (nationality, ethnicity, religion, poverty): only about danger itself
+    # nor words that label a kind of person rather than a danger (such as words for drug users, sex workers, homeless
+    # people, football fans, "ghetto" or tracksuit slang); words about crime, drugs, theft and violence stay
+    danger: [sketch, danger, unsafe, "not safe", crime, criminal, stab, knife, robb, mugg, pickpocket, thief, thiev, theft, steal,
+             drug, dealer, crack, heroin, cocaine, weed, hash, marijuan, gang, scary, violen, fight, shoot, gun,
+             "be careful", "watch your", "don't go", riot, degradation,
+             niebezpiecz, kradzie, złodzie, bójk, napad, narkot, nożown,
+             perigos, assalt, roub, droga, insegur, carteirist, esfaque, haxix, coca,
+             gevaar, onveilig, crimin, overval, zakkenroll, steekpartij,
+             nevarn, kriminal, tatvin, pretep,
+             небезпеч, опасн, кримін, кримин, крадіж, краж, наркот]
+    safe: [safe, bezpiecz, seguro, segura, veilig, varno, безпечн, безопасн]
+  recorded:
+    ratio_bands: [[0.5, 90], [1.0, 70], [2.0, 45], [4.0, 15], [8.0, 0]]   # district rate / city rate
+  city:
+    eurostat_offences: [ICCS02011, ICCS0401, ICCS0501, ICCS0502]           # assault, robbery, burglary, theft
+    ratio_bands: [[0.5, 85], [1.0, 70], [2.0, 50], [3.0, 35]]              # region rate / median of European regions

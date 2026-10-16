@@ -1,0 +1,58 @@
+# Template for registry/<cc>/<city>/sources.yaml; resolve_city.py fills the city fields.
+city: ''
+name: ''
+country: ''
+languages: []
+crs: ''
+leaf_on_months:
+- 6
+- 7
+- 8
+pins:
+  overture_release: ''
+boundary:
+  overture_division_id: ''
+  overture_subtype: ''
+resolved_at: ''
+skill_version: 0.2.0
+layers:
+  I00_boundary:
+    provider: overture_division
+    tier: B
+  I01_buildings:
+    provider: overture_buildings
+    tier: B
+  I02_heights:
+    provider: global_height_ladder
+    tier: B/C per building
+  I03_walk_network:
+    provider: overture_segments
+    tier: B
+  I04_roads:
+    provider: overture_segments
+    tier: B
+  I05_canopy:
+    provider: esa_worldcover_2021_trees
+    tier: C
+  I07_green_areas:
+    provider: overture_base_green
+    tier: C
+  I08_sealed:
+    provider: worldcover_builtup_x_ndvi
+    tier: C
+  I09_ndvi:
+    provider: sentinel2_l2a_summer
+    tier: B
+  I10_noise:
+    provider: road_class_proxy_v0
+    tier: C
+  I19_transit:
+    provider: osm_stops_routes_ptal_lite
+    tier: C
+  I20_amenities:
+    provider: osm_plus_overture_places
+    tier: B
+  I14_tourism:
+    provider: overture_places_tourism
+    tier: C
+candidates_file: candidates.yaml
