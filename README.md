@@ -2,6 +2,8 @@
 
 A street livability score for any city. Every residential street is scored from 0 to 100 for light, green space, noise, tourists and walkability to daily needs, using OpenStreetMap and other open data. It runs as an AI agent skill on your own computer.
 
+See the map: **https://greencitymap.city**
+
 ![Map of Kraków. Every residential street is drawn in a colour from red (hard to live on) to blue (great to live on). Each district shows the score of its typical street: the Old Town (Stare Miasto) scores 15, most other districts score between 67 and 85.](docs/images/krakow-districts.webp)
 
 ## What it scores
@@ -84,18 +86,18 @@ Look at the result on a local map:
 
 Then open <http://localhost:8000> in your browser. Press Ctrl+C in the terminal to stop the server.
 
-Pack the city into `share/si-ljubljana.gcm.zip`, then send it to the website:
+Pack the city into `share/si-ljubljana.gcm.zip`, then send it to the website, https://greencitymap.city:
 
 ```sh
 .venv/bin/python -I skill/pipeline/package_city.py out/ljubljana share --credit "Your name"
-.venv/bin/python -I skill/pipeline/submit_city.py share/si-ljubljana.gcm.zip --site <website address>
+.venv/bin/python -I skill/pipeline/submit_city.py share/si-ljubljana.gcm.zip
 ```
 
 The credit is optional. `submit_city.py` prints a link and a short code. Open the link and click "Yes, send it"; only then is the file uploaded.
 
 The website answers with a receipt, which the script saves in `.submissions/`. It then prints the steps for a pull request that adds that one file to this repository. Open it only if you want to: it is public and shows your GitHub name. The site owner checks the upload against the receipt before the city goes on the map. How this works, and what the bundle holds, is in [docs/UPLOAD.md](docs/UPLOAD.md).
 
-**The website is not public yet.** Its address will be announced here. Until then, `submit_city.py` has no default address: keep your bundle in `share/` and send it then. Bundles attached to GitHub issues are never put on the map.
+Bundles attached to GitHub issues are never put on the map; the upload above is the only way in.
 
 ## Cities mapped so far
 

@@ -37,7 +37,7 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
-DEFAULT_SITE = "https://[YOUR-HEROKU-APP].herokuapp.com"
+DEFAULT_SITE = "https://greencitymap.city"
 UA = "GreenCityMap-skill/0.2"
 REPO = "broAir/green-city-map"
 ROOT = Path(__file__).resolve().parents[2]      # the repository root: receipts go to ROOT/.submissions/
@@ -148,8 +148,7 @@ def parse_args(argv):
     site = (site or os.environ.get("GCM_SITE") or DEFAULT_SITE).strip().rstrip("/")
     if "[YOUR-" in site:
         raise SystemExit("Set the website address: --site https://... or GCM_SITE=https://...\n"
-                         "The address will be announced in the README at github.com/broAir/green-city-map. "
-                         "Until then, keep the bundle in share/ and send it once the address is out. "
+                         "The Green City Map website is https://greencitymap.city. "
                          "Bundles attached to GitHub issues are never put on the map.")
     if not re.match(r"^https?://[^/\s]+(/\S*)?$", site) or origin(site) is None:
         raise SystemExit(f"The website address should look like https://example.org (got {site!r}).")

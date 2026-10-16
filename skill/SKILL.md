@@ -82,8 +82,7 @@ All commands below run from the repository root, the folder that holds `skill/`,
    - Note what looks wrong; don't adjust numbers by hand.
 7. **Package and send it**:
    1. `.venv/bin/python -I skill/pipeline/package_city.py out/<city> share --credit "<name or @handle, optional>"` writes `share/<cc>-<city>.gcm.zip`: scores, measurements, sources and licences, and checksums. It contains nothing personal except the optional credit.
-   2. Ask the person whether to send it now. If yes, run `.venv/bin/python -I skill/pipeline/submit_city.py share/<cc>-<city>.gcm.zip --site <website address>`. `GCM_SITE=<website address>` works instead of `--site`.
-      - The website address is not set in the code yet. Use only the address announced in the README of github.com/broAir/green-city-map. If there is none, or the person doesn't know it, don't guess: tell the person to keep the bundle in `share/` and send it once the address is announced.
+   2. Ask the person whether to send it now. If yes, run `.venv/bin/python -I skill/pipeline/submit_city.py share/<cc>-<city>.gcm.zip`. It sends to the website, https://greencitymap.city. Use `--site` (or `GCM_SITE`) only when the person asks for another copy of the site, such as a local test server.
    3. It first asks the website whether the city is already up to date. If it is, it stops: tell the person nothing needed sending.
    4. Otherwise it prints a link and a short code. Tell the person to open the link, check the city name and size, and click "Yes, send it". The script waits up to 20 minutes, then uploads once with a one-time signed key.
    5. Relay the result in plain words:

@@ -25,8 +25,8 @@ Or follow [skill/SKILL.md](skill/SKILL.md) yourself. The [README](README.md#run-
 When the city has passed `validate_city.py` and you have looked at the map:
 
 1. Pack it: `.venv/bin/python -I skill/pipeline/package_city.py out/<city> share --credit "Your name"` (the credit is optional).
-2. Send it to the website, once its address is announced in the README: `submit_city.py` asks you to approve the upload in your browser. See [docs/UPLOAD.md](docs/UPLOAD.md).
-   - This is the only way a city reaches the map. Bundles attached to GitHub issues are never loaded, so please don't attach them. Until the address is announced, keep your bundle in `share/`.
+2. Send it to the website, https://greencitymap.city: `submit_city.py` asks you to approve the upload in your browser. See [docs/UPLOAD.md](docs/UPLOAD.md).
+   - This is the only way a city reaches the map. Bundles attached to GitHub issues are never loaded, so please don't attach them.
 3. After the upload, `submit_city.py` saves the website's receipt as `.submissions/<cc>-<city>-<date>-<sha256[:12]>.json` and prints the steps for a pull request. If you agree, open a pull request that adds only that file:
    - It must be one commit on top of the latest main. Don't edit the receipt, don't add any other file or commit, and don't merge main into the branch.
    - A GitHub check tests the receipt. The check and its checker come from the main branch, so changing them in the same pull request doesn't help.

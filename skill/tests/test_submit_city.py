@@ -321,7 +321,7 @@ class SubmitReceipt(unittest.TestCase):
         src = (PIPE / "submit_city.py").read_text(encoding="utf-8")
         for word in ("subprocess", "os.system", "os.popen", "Popen", "execv", "spawn"):
             self.assertNotIn(word, src)
-        self.assertIn('DEFAULT_SITE = "https://[YOUR-HEROKU-APP].herokuapp.com"', src)
+        self.assertIn('DEFAULT_SITE = "https://greencitymap.city"', src)
         self.assertTrue(re.search(r"Ask the person first", src))
 
 

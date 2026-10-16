@@ -23,12 +23,12 @@ You have 20 minutes to click. If you don't, nothing is sent; run the script agai
 
 ## The website address
 
-The address of the website is not set in the code yet. Until it is, `submit_city.py` stops with "Set the website address" unless you give one:
+The website is https://greencitymap.city, and `submit_city.py` sends there by default. To send to another copy of the site, such as a local test server, give its address:
 
 - `--site https://<website address>` on the command line, or
 - `GCM_SITE=https://<website address>` in your environment.
 
-Use only the address announced in this repository's README. Don't guess one: the script sends the bundle to whatever address you give it.
+Don't guess an address: the script sends the bundle to whatever address you give it.
 
 ## What is in the bundle
 
@@ -336,7 +336,7 @@ The receipt status lookup is rate-limited per IP address too.
 | "The website address should look like ..." or "... must start with https://" | The address isn't a web address, or it isn't https. Give it as `https://...` (`http://` works only for `localhost`). |
 | "No bundle at ..." or "... is not a city bundle" | Make the bundle first with `package_city.py`. |
 | "Could not reach ..." | No connection, or nothing answers at that address. Check the address and your connection. |
-| "The answer from ... doesn't look right" | The link or the upload address the site sent is not on the same site, or the code has the wrong form. Nothing is sent. Check that the address is the one announced in the README. |
+| "The answer from ... doesn't look right" | The link or the upload address the site sent is not on the same site, or the code has the wrong form. Nothing is sent. Check that the address is https://greencitymap.city, or the copy of the site you meant. |
 | A message, and nothing is sent | The city is already up to date, the same bundle is already waiting, or the city already has uploads waiting. |
 | "The site refused: ..." | The start was refused; the reason follows. |
 | "Not sent: expired." or "Not sent: cancelled." | Nobody approved in time, or the person cancelled. Run it again if you still want to send. |
@@ -355,4 +355,4 @@ The script reads at most 64 KB of each answer from the website. Text from the we
 
 ## Bundles go only through the website
 
-A city reaches the map only through the upload above, with a person's approval, the receipt and the owner's check. Bundles attached to GitHub issues are never loaded onto the map, so please don't attach them. Until the website's address is announced, keep your bundle in `share/` and send it then. You can still ask for a city, or point to better local data, with the [Add a city form](https://github.com/broAir/green-city-map/issues/new?template=city-request.yml). Don't commit bundles to the repository.
+A city reaches the map only through the upload above, with a person's approval, the receipt and the owner's check. Bundles attached to GitHub issues are never loaded onto the map, so please don't attach them. You can still ask for a city, or point to better local data, with the [Add a city form](https://github.com/broAir/green-city-map/issues/new?template=city-request.yml). Don't commit bundles to the repository.
