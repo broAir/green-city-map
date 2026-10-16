@@ -189,7 +189,57 @@ def choose_levels(areas, broken, city):
     finer = [s for s in stats if s is not districts and s["cover"] >= 0.4 and s["n"] <= 400
              and (districts is None or s["n"] > districts["n"] * 1.5)]
     hoods = min(finer, key=lambda s: (-round(s["cover"], 1), rank_kind(s), s["n"])) if finer else None
+    if districts:
+        districts = split_nested(districts, stats)
     return districts, hoods, stats
+
+
+def admin_level(group):
+    """The number in an "admin N" group, or None for other kinds of areas."""
+    return int(group.split()[1]) if group.startswith("admin ") and group.split()[1].isdigit() else None
+
+
+def split_nested(districts, stats):
+    """Some municipalities are one town plus villages, and the whole town is a single district: Oviedo's parish
+    "Oviedo / Uviéu" holds over half of its streets. When a finer admin level lies (almost) entirely inside one
+    district and covers it, that district is replaced by the finer areas, so the town is ranked by its own
+    neighbourhoods. A finer level spread over several districts (the usual case) changes nothing."""
+    top = admin_level(districts["group"])
+    if top is None:
+        return districts
+    items, used = [], set()
+    for it in districts["items"]:
+        best = None
+        for s in stats:
+            lv = admin_level(s["group"])
+            if lv is None or lv <= top:
+                continue
+            inside = [f for f in s["items"] if f["geom"].intersection(it["geom"]).area > 0.9 * f["geom"].area]
+            if len(inside) < 4 or len(inside) < 0.9 * s["n"]:
+                continue
+            cover = unary_union([f["geom"] for f in inside]).intersection(it["geom"]).area / it["geom"].area
+            if cover >= 0.9 and (best is None or (cover, -lv) > (best[0], -best[1])):
+                best = (cover, lv, s["group"], inside)
+        if best:
+            items += [{**f, "geom": f["geom"].intersection(it["geom"]), "parent": it["name"]} for f in best[3]]
+            used.add(best[2])
+            print(f"  split {it['name']} into {len(best[3])} areas from {best[2]}")
+        else:
+            items.append(it)
+    if not used:
+        return districts
+    # a town neighbourhood can share its name with a village (Oviedo's barrio Pando and the parish of Pando):
+    # the neighbourhood gets its town's name in brackets, "Pando (Oviedo)"
+    seen = {}
+    for x in items:
+        seen[x["name"]] = seen.get(x["name"], 0) + 1
+    for x in items:
+        if x.get("parent") and seen[x["name"]] > 1:
+            town = x["parent"].split(" / ")[0]
+            x["name"] = f"{x['name']} ({town})"
+            if x.get("name_en"):
+                x["name_en"] = f"{x['name_en']} ({town})"
+    return {**districts, "group": " + ".join([districts["group"], *sorted(used)]), "items": items, "n": len(items)}
 
 
 def extra_medians(extras, inside):
