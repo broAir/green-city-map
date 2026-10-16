@@ -1,0 +1,16 @@
+{
+  "bundle": "es-oviedo.gcm.zip",
+  "bytes": 2032311,
+  "city": "oviedo",
+  "config_sha": "df1c4ea5464dd846",
+  "country": "ES",
+  "credit": "",
+  "date": "2026-10-16",
+  "format": "gcm-receipt-1",
+  "name": "Oviedo",
+  "overture_release": "2026-09-23.1",
+  "pieces": 11442,
+  "sha256": "ad226a1d91d99af46934ded648a4ac94301643f96cc163968ba9c9f3d947eda6",
+  "skill_version": "0.2.0",
+  "upload": "9fj-z0BnbmerPhps"
+}
