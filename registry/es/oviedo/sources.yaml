@@ -1,0 +1,63 @@
+# City source manifest (schema: spec/input-layers.md §5), written by resolve_city.py.
+# Every layer starts at its global baseline; the research phase lists local upgrades in candidates.yaml.
+city: oviedo
+name: Oviedo
+country: ES
+languages: []
+crs: EPSG:32630
+leaf_on_months:
+- 6
+- 7
+- 8
+pins:
+  overture_release: 2026-09-23.1
+boundary:
+  overture_division_id: 72ab5058-2528-4664-b88f-c4d1abd50865
+  overture_subtype: locality
+resolved_at: '2026-10-16'
+skill_version: 0.2.0
+layers:
+  I00_boundary:
+    provider: overture_division
+    tier: B
+  I01_buildings:
+    provider: overture_buildings
+    tier: B
+  I02_heights:
+    provider: global_height_ladder
+    tier: B/C per building
+  I03_walk_network:
+    provider: overture_segments
+    tier: B
+  I04_roads:
+    provider: overture_segments
+    tier: B
+  I05_canopy:
+    provider: esa_worldcover_2021_trees
+    tier: C
+  I07_green_areas:
+    provider: overture_base_green
+    tier: C
+  I08_sealed:
+    provider: worldcover_builtup_x_ndvi
+    tier: C
+  I09_ndvi:
+    provider: sentinel2_l2a_summer
+    tier: B
+  I10_noise:
+    provider: road_class_proxy_v0
+    tier: C
+  I19_transit:
+    provider: osm_stops_routes_ptal_lite
+    tier: C
+  I20_amenities:
+    provider: osm_plus_overture_places
+    tier: B
+  I14_tourism:
+    provider: overture_places_tourism
+    tier: C
+candidates_file: candidates.yaml
+osm_extract:
+  url: https://download.geofabrik.de/europe/spain/asturias-latest.osm.pbf
+  provider: geofabrik
+  licence: ODbL-1.0
